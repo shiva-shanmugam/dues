@@ -12,6 +12,14 @@ class NotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin;
   bool _initialized = false;
+  int _generation = 0;
+  Future<void> _pendingMutation = Future.value();
+
+  Future<void> _enqueue(Future<void> Function() mutation) {
+    final next = _pendingMutation.then((_) => mutation());
+    _pendingMutation = next.catchError((Object _) {});
+    return next;
+  }
 
   static const _details = NotificationDetails(
     android: AndroidNotificationDetails(
@@ -51,12 +59,25 @@ class NotificationService {
         true;
   }
 
-  Future<void> scheduleRenewals(Iterable<Subscription> subscriptions) async {
+  Future<void> scheduleRenewals(Iterable<Subscription> subscriptions) {
+    final generation = ++_generation;
+    final snapshot = subscriptions.toList();
+    return _enqueue(() => _scheduleRenewals(snapshot, generation));
+  }
+
+  Future<void> _scheduleRenewals(
+    List<Subscription> subscriptions,
+    int generation,
+  ) async {
+    if (generation != _generation) return;
     await initialize();
+    if (generation != _generation) return;
     await _plugin.cancelAllPendingNotifications();
+    if (generation != _generation) return;
     final now = tz.TZDateTime.now(tz.local);
     for (final subscription in subscriptions.where((item) => !item.isPaused)) {
       for (final daysBefore in const [3, 1]) {
+        if (generation != _generation) return;
         final due = tz.TZDateTime(
           tz.local,
           subscription.nextDueDate.year,
@@ -79,6 +100,14 @@ class NotificationService {
         );
       }
     }
+  }
+
+  Future<void> cancelRenewals() {
+    ++_generation;
+    return _enqueue(() async {
+      await initialize();
+      await _plugin.cancelAllPendingNotifications();
+    });
   }
 
   int _notificationId(String id, int daysBefore) {

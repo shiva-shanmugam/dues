@@ -9,6 +9,12 @@ abstract interface class SubscriptionRepository {
   Future<void> setPaused(String id, {required bool paused});
   Future<void> saveTransactions(Iterable<TransactionRecord> transactions);
   Future<List<TransactionRecord>> getTransactions();
+  Future<List<TransactionRecord>> getRecentTransactionsForMerchant(
+    String merchant, {
+    int limit = 10,
+  });
   Future<Set<String>> getIgnoredMerchants();
+  Stream<Set<String>> watchIgnoredMerchants();
   Future<void> ignoreMerchant(String merchant);
+  Future<void> unignoreMerchant(String merchant);
 }

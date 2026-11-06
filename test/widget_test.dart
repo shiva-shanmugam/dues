@@ -2,6 +2,7 @@ import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/data/services/sms_inbox_service.dart';
 import 'package:dues/domain/models/subscription.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
+import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/shell/app_shell.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,8 @@ void main() {
     overrides: [
       subscriptionsProvider.overrideWith((ref) => Stream.value([subscription])),
       smsInboxProvider.overrideWithValue(const _FakeSmsInboxService()),
+      appPreferencesProvider.overrideWith(_Preferences.new),
+      ignoredMerchantsProvider.overrideWith((ref) => Stream.value(<String>{})),
     ],
     child: MaterialApp(theme: DuesTheme.dark, home: const AppShell()),
   );
@@ -65,4 +68,10 @@ class _FakeSmsInboxService extends SmsInboxService {
 
   @override
   Future<bool> hasPermission() async => false;
+}
+
+class _Preferences extends AppPreferencesController {
+  @override
+  Future<AppPreferences> build() async =>
+      const AppPreferences(hapticsEnabled: false);
 }

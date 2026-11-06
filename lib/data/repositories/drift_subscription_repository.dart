@@ -92,21 +92,38 @@ class DriftSubscriptionRepository implements SubscriptionRepository {
     final rows = await (database.select(
       database.transactions,
     )..orderBy([(row) => OrderingTerm.asc(row.occurredAt)])).get();
-    return rows
-        .map(
-          (row) => domain.TransactionRecord(
-            id: row.id,
-            sender: row.sender,
-            body: row.body,
-            merchant: row.merchant,
-            amount: row.amount,
-            currency: row.currency,
-            occurredAt: row.occurredAt,
-            isDebit: row.isDebit,
-            signal: row.signal,
-          ),
-        )
-        .toList();
+    return rows.map(_transactionFromRow).toList();
+  }
+
+  @override
+  Future<List<domain.TransactionRecord>> getRecentTransactionsForMerchant(
+    String merchant, {
+    int limit = 10,
+  }) async {
+    final query = database.select(database.transactions)
+      ..where(
+        (row) => row.merchant.lower().equals(merchant.trim().toLowerCase()),
+      )
+      ..orderBy([
+        (row) => OrderingTerm.desc(row.occurredAt),
+        (row) => OrderingTerm.desc(row.id),
+      ])
+      ..limit(limit.clamp(1, 10));
+    return (await query.get()).map(_transactionFromRow).toList();
+  }
+
+  domain.TransactionRecord _transactionFromRow(Transaction row) {
+    return domain.TransactionRecord(
+      id: row.id,
+      sender: row.sender,
+      body: row.body,
+      merchant: row.merchant,
+      amount: row.amount,
+      currency: row.currency,
+      occurredAt: row.occurredAt,
+      isDebit: row.isDebit,
+      signal: row.signal,
+    );
   }
 
   @override
@@ -116,12 +133,30 @@ class DriftSubscriptionRepository implements SubscriptionRepository {
   }
 
   @override
+  Stream<Set<String>> watchIgnoredMerchants() {
+    return database
+        .select(database.ignoredMerchants)
+        .watch()
+        .map((rows) => rows.map((row) => row.merchant).toSet());
+  }
+
+  @override
   Future<void> ignoreMerchant(String merchant) {
     return database
         .into(database.ignoredMerchants)
         .insertOnConflictUpdate(
-          IgnoredMerchantsCompanion.insert(merchant: merchant),
+          IgnoredMerchantsCompanion.insert(
+            merchant: merchant.trim().toLowerCase(),
+          ),
         );
+  }
+
+  @override
+  Future<void> unignoreMerchant(String merchant) async {
+    await (database.delete(database.ignoredMerchants)..where(
+          (row) => row.merchant.lower().equals(merchant.trim().toLowerCase()),
+        ))
+        .go();
   }
 
   domain.Subscription _subscriptionFromRow(Subscription row) {

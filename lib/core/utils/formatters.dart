@@ -1,13 +1,26 @@
-String formatInr(num amount) {
-  final value = amount.round().toString();
+String formatInr(num amount) => formatMoney(amount, 'INR');
+
+String formatMoney(num amount, String currency) {
+  final parts = amount.toStringAsFixed(amount % 1 == 0 ? 0 : 2).split('.');
+  final value = parts.first;
   final lastThree = value.length > 3
       ? value.substring(value.length - 3)
       : value;
   final leading = value.length > 3 ? value.substring(0, value.length - 3) : '';
-  final grouped = leading.isEmpty
+  final grouped = currency != 'INR'
+      ? value.replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (match) => ',')
+      : leading.isEmpty
       ? lastThree
       : '${leading.replaceAllMapped(RegExp(r'\B(?=(\d{2})+(?!\d))'), (match) => ',')},$lastThree';
-  return '₹$grouped';
+  final symbol = switch (currency) {
+    'INR' => '₹',
+    'USD' => '\$',
+    'EUR' => '€',
+    'GBP' => '£',
+    _ => '$currency ',
+  };
+  final decimals = parts.length == 2 ? '.${parts.last}' : '';
+  return '$symbol$grouped$decimals';
 }
 
 String formatShortDate(DateTime date) {

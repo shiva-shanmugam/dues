@@ -3,9 +3,9 @@ import 'package:dues/presentation/pages/home_page.dart';
 import 'package:dues/presentation/pages/settings_page.dart';
 import 'package:dues/presentation/pages/subscriptions_page.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
+import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/widgets/dot_grid.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AppShell extends ConsumerWidget {
@@ -26,7 +26,7 @@ class AppShell extends ConsumerWidget {
       bottomNavigationBar: _BottomNav(
         selected: selected,
         onSelect: (index) {
-          HapticFeedback.selectionClick();
+          ref.read(hapticsProvider).selectionClick();
           ref.read(selectedTabProvider.notifier).select(index);
         },
       ),

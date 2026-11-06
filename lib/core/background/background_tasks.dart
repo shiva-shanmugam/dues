@@ -1,6 +1,7 @@
 import 'package:dues/data/database/app_database.dart';
 import 'package:dues/data/repositories/drift_subscription_repository.dart';
 import 'package:dues/data/services/notification_service.dart';
+import 'package:dues/data/services/local_settings_service.dart';
 import 'package:flutter/widgets.dart';
 import 'package:workmanager/workmanager.dart';
 
@@ -13,6 +14,12 @@ void callbackDispatcher() {
     WidgetsFlutterBinding.ensureInitialized();
     final database = AppDatabase();
     try {
+      final enabled = await LocalSettingsService(database)
+          .getBool('renewalAlertsEnabled', fallback: true);
+      if (!enabled) {
+        await NotificationService().cancelRenewals();
+        return true;
+      }
       final subscriptions = await DriftSubscriptionRepository(database)
           .getSubscriptions();
       await NotificationService().scheduleRenewals(subscriptions);
