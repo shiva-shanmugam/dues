@@ -64,6 +64,9 @@ class SmsImportService {
     };
     for (final candidate in candidates) {
       final current = existingByMerchant[candidate.merchant.toLowerCase()];
+      // A manually adjusted subscription remains linked to its source SMS,
+      // but its price, cycle and due date are owned by the user.
+      if (current != null && !current.isAutoDetected) continue;
       await repository.saveSubscription(
         Subscription(
           id: current?.id ?? 'sms:${_slug(candidate.merchant)}',
@@ -72,7 +75,7 @@ class SmsImportService {
           amount: candidate.amount,
           currency: candidate.currency,
           cycle: candidate.cycle,
-          nextDueDate: _futureDate(candidate.nextDueDate),
+          nextDueDate: _futureDate(candidate.nextDueDate, candidate.cycle),
           isPaused: current?.isPaused ?? false,
           isAutoDetected: true,
         ),
@@ -91,11 +94,11 @@ class SmsImportService {
       .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
       .replaceAll(RegExp(r'^-|-$'), '');
 
-  DateTime _futureDate(DateTime date) {
+  DateTime _futureDate(DateTime date, BillingCycle cycle) {
     var result = date;
     final now = DateTime.now();
     while (!result.isAfter(now)) {
-      result = result.add(const Duration(days: 30));
+      result = result.add(Duration(days: cycle.days));
     }
     return result;
   }
