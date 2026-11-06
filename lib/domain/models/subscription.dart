@@ -16,6 +16,8 @@ class Subscription {
     required this.amount,
     required this.cycle,
     required this.nextDueDate,
+    this.currency = 'INR',
+    this.normalizedMerchant,
     this.isPaused = false,
     this.isAutoDetected = true,
   });
@@ -25,6 +27,8 @@ class Subscription {
   final double amount;
   final BillingCycle cycle;
   final DateTime nextDueDate;
+  final String currency;
+  final String? normalizedMerchant;
   final bool isPaused;
   final bool isAutoDetected;
 
@@ -41,13 +45,24 @@ class Subscription {
     BillingCycle.yearly => amount / 12,
   };
 
-  Subscription copyWith({bool? isPaused}) => Subscription(
+  Subscription copyWith({
+    String? name,
+    double? amount,
+    BillingCycle? cycle,
+    DateTime? nextDueDate,
+    String? currency,
+    String? normalizedMerchant,
+    bool? isPaused,
+    bool? isAutoDetected,
+  }) => Subscription(
     id: id,
-    name: name,
-    amount: amount,
-    cycle: cycle,
-    nextDueDate: nextDueDate,
+    name: name ?? this.name,
+    amount: amount ?? this.amount,
+    cycle: cycle ?? this.cycle,
+    nextDueDate: nextDueDate ?? this.nextDueDate,
+    currency: currency ?? this.currency,
+    normalizedMerchant: normalizedMerchant ?? this.normalizedMerchant,
     isPaused: isPaused ?? this.isPaused,
-    isAutoDetected: isAutoDetected,
+    isAutoDetected: isAutoDetected ?? this.isAutoDetected,
   );
 }
