@@ -4,6 +4,7 @@ import 'package:dues/domain/models/subscription.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/widgets/dues_card.dart';
 import 'package:dues/presentation/widgets/glyph_ring.dart';
+import 'package:dues/presentation/widgets/subscription_editor_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,7 +14,8 @@ class SubscriptionsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final subscriptions = ref.watch(subscriptionsProvider);
+    final subscriptions =
+        ref.watch(subscriptionsProvider).value ?? const <Subscription>[];
     final now = ref.watch(clockProvider);
     return CustomScrollView(
       key: const PageStorageKey('subscriptions-scroll'),
@@ -42,12 +44,16 @@ class SubscriptionsPage extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  _AddButton(onPressed: () => _showAddPreview(context)),
+                  _AddButton(onPressed: () => _showEditor(context)),
                 ],
               ),
               const SizedBox(height: 28),
               for (final subscription in subscriptions) ...[
-                _SubscriptionCard(subscription: subscription, now: now),
+                _SubscriptionCard(
+                  subscription: subscription,
+                  now: now,
+                  onEdit: () => _showEditor(context, subscription),
+                ),
                 const SizedBox(height: 12),
               ],
             ],
@@ -57,47 +63,19 @@ class SubscriptionsPage extends ConsumerWidget {
     );
   }
 
-  void _showAddPreview(BuildContext context) {
+  void _showEditor(BuildContext context, [Subscription? subscription]) {
     HapticFeedback.mediumImpact();
-    showModalBottomSheet<void>(
+    showModalBottomSheet<bool>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: DuesColors.surfaceRaised,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         side: BorderSide(color: DuesColors.outline),
       ),
-      builder: (context) => const SafeArea(
+      builder: (context) => SafeArea(
         top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(24, 12, 24, 32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(width: 36, child: Divider(thickness: 3)),
-              SizedBox(height: 18),
-              Icon(Icons.add_circle_outline, size: 32),
-              SizedBox(height: 16),
-              Text(
-                'MANUAL ENTRY',
-                style: TextStyle(
-                  fontFamily: 'Doto',
-                  fontVariations: [FontVariation('wght', 800)],
-                  fontSize: 25,
-                ),
-              ),
-              SizedBox(height: 10),
-              Text(
-                'The add and edit form arrives with local persistence in the next build stage.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: DuesColors.muted,
-                  height: 1.6,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ),
+        child: SubscriptionEditorSheet(subscription: subscription),
       ),
     );
   }
@@ -122,9 +100,14 @@ class _AddButton extends StatelessWidget {
 }
 
 class _SubscriptionCard extends ConsumerWidget {
-  const _SubscriptionCard({required this.subscription, required this.now});
+  const _SubscriptionCard({
+    required this.subscription,
+    required this.now,
+    required this.onEdit,
+  });
   final Subscription subscription;
   final DateTime now;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -192,17 +175,36 @@ class _SubscriptionCard extends ConsumerWidget {
             PopupMenuButton<String>(
               color: DuesColors.surfaceRaised,
               icon: const Icon(Icons.more_vert, color: DuesColors.muted),
-              onSelected: (value) {
+              onSelected: (value) async {
                 HapticFeedback.selectionClick();
                 if (value == 'pause') {
-                  ref
-                      .read(subscriptionsProvider.notifier)
-                      .togglePaused(subscription.id);
+                  await ref
+                      .read(repositoryProvider)
+                      .setPaused(
+                        subscription.id,
+                        paused: !subscription.isPaused,
+                      );
+                } else if (value == 'edit') {
+                  onEdit();
+                } else if (value == 'ignore') {
+                  final merchant =
+                      subscription.normalizedMerchant ?? subscription.name;
+                  await ref
+                      .read(repositoryProvider)
+                      .ignoreMerchant(merchant.toLowerCase());
+                  await ref
+                      .read(repositoryProvider)
+                      .deleteSubscription(subscription.id);
                 } else if (value == 'delete') {
-                  ref
-                      .read(subscriptionsProvider.notifier)
-                      .remove(subscription.id);
+                  await ref
+                      .read(repositoryProvider)
+                      .deleteSubscription(subscription.id);
                 }
+                await ref
+                    .read(notificationServiceProvider)
+                    .scheduleRenewals(
+                      await ref.read(repositoryProvider).getSubscriptions(),
+                    );
               },
               itemBuilder: (context) => [
                 PopupMenuItem(

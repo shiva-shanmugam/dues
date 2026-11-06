@@ -12,7 +12,8 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final subscriptions = ref.watch(subscriptionsProvider);
+    final subscriptions =
+        ref.watch(subscriptionsProvider).value ?? const <Subscription>[];
     final now = ref.watch(clockProvider);
     final active = subscriptions.where((item) => !item.isPaused).toList();
     final monthly = active.fold<double>(

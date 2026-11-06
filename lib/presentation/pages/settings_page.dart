@@ -1,17 +1,38 @@
+import 'dart:io';
+
+import 'package:csv/csv.dart';
 import 'package:dues/core/theme/app_theme.dart';
+import 'package:dues/core/utils/formatters.dart';
+import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/widgets/dues_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool renewalAlerts = true;
+  bool smsGranted = false;
+  bool scanning = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshPermission();
+  }
+
+  Future<void> _refreshPermission() async {
+    final granted = await ref.read(smsInboxProvider).hasPermission();
+    if (mounted) setState(() => smsGranted = granted);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,11 +62,16 @@ class _SettingsPageState extends State<SettingsPage> {
                 padding: EdgeInsets.zero,
                 child: Column(
                   children: [
-                    const _SettingRow(
+                    _SettingRow(
                       icon: Icons.sms_outlined,
                       title: 'SMS ACCESS',
-                      subtitle: 'Not connected in UI preview',
-                      trailing: _StatusDot(),
+                      subtitle: scanning
+                          ? 'Scanning messages…'
+                          : (smsGranted
+                                ? 'Connected · tap to rescan'
+                                : 'Not connected · tap to allow'),
+                      trailing: _StatusDot(active: smsGranted),
+                      onTap: scanning ? null : _scanSms,
                     ),
                     const Divider(height: 1),
                     _SettingRow(
@@ -56,8 +82,21 @@ class _SettingsPageState extends State<SettingsPage> {
                         value: renewalAlerts,
                         activeThumbColor: DuesColors.offWhite,
                         activeTrackColor: DuesColors.red,
-                        onChanged: (value) {
+                        onChanged: (value) async {
                           HapticFeedback.selectionClick();
+                          if (value) {
+                            final granted = await ref
+                                .read(notificationServiceProvider)
+                                .requestPermission();
+                            if (!granted) return;
+                            await ref
+                                .read(notificationServiceProvider)
+                                .scheduleRenewals(
+                                  await ref
+                                      .read(repositoryProvider)
+                                      .getSubscriptions(),
+                                );
+                          }
                           setState(() => renewalAlerts = value);
                         },
                       ),
@@ -67,10 +106,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       icon: Icons.file_download_outlined,
                       title: 'EXPORT CSV',
                       subtitle: 'Save a local copy',
-                      onTap: () => _preview(
-                        context,
-                        'CSV export arrives with the database stage.',
-                      ),
+                      onTap: _exportCsv,
                     ),
                   ],
                 ),
@@ -147,6 +183,73 @@ class _SettingsPageState extends State<SettingsPage> {
           borderRadius: BorderRadius.circular(16),
           side: const BorderSide(color: DuesColors.outline),
         ),
+      ),
+    );
+  }
+
+  Future<void> _scanSms() async {
+    HapticFeedback.mediumImpact();
+    setState(() => scanning = true);
+    try {
+      var granted = await ref.read(smsInboxProvider).hasPermission();
+      if (!granted) {
+        granted = await ref.read(smsInboxProvider).requestPermission();
+      }
+      if (!granted) {
+        if (mounted) {
+          _preview(
+            context,
+            'SMS access was not granted. You can still add subscriptions manually.',
+          );
+        }
+        return;
+      }
+      final result = await ref.read(smsImportServiceProvider).import();
+      await ref
+          .read(notificationServiceProvider)
+          .scheduleRenewals(
+            await ref.read(repositoryProvider).getSubscriptions(),
+          );
+      if (mounted) {
+        _preview(
+          context,
+          'Scanned ${result.messagesRead} messages · found ${result.subscriptionsFound} subscriptions.',
+        );
+      }
+      smsGranted = true;
+    } on PlatformException catch (error) {
+      if (mounted) {
+        _preview(context, error.message ?? 'Could not read SMS messages.');
+      }
+    } finally {
+      if (mounted) setState(() => scanning = false);
+    }
+  }
+
+  Future<void> _exportCsv() async {
+    final subscriptions = await ref.read(repositoryProvider).getSubscriptions();
+    final rows = <List<Object?>>[
+      ['Name', 'Amount', 'Currency', 'Cycle', 'Next due', 'Paused', 'Source'],
+      for (final item in subscriptions)
+        [
+          item.name,
+          item.amount,
+          item.currency,
+          item.cycle.name,
+          item.nextDueDate.toIso8601String().split('T').first,
+          item.isPaused,
+          item.isAutoDetected ? 'SMS' : 'Manual',
+        ],
+    ];
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}/dues-subscriptions.csv');
+    await file.writeAsString(csv.encode(rows));
+    await SharePlus.instance.share(
+      ShareParams(
+        title: 'Dues subscriptions',
+        text:
+            'Local Dues subscription export · ${formatShortDate(DateTime.now())}',
+        files: [XFile(file.path, mimeType: 'text/csv')],
       ),
     );
   }
@@ -242,14 +345,15 @@ class _SettingRow extends StatelessWidget {
 }
 
 class _StatusDot extends StatelessWidget {
-  const _StatusDot();
+  const _StatusDot({required this.active});
+  final bool active;
   @override
   Widget build(BuildContext context) => Container(
     width: 8,
     height: 8,
-    decoration: const BoxDecoration(
+    decoration: BoxDecoration(
       shape: BoxShape.circle,
-      color: DuesColors.red,
+      color: active ? DuesColors.offWhite : DuesColors.red,
     ),
   );
 }

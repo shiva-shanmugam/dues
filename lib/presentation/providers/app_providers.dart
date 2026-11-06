@@ -1,34 +1,40 @@
-import 'package:dues/data/repositories/fake_subscription_repository.dart';
+import 'package:dues/data/database/app_database.dart' hide Subscription;
+import 'package:dues/data/repositories/drift_subscription_repository.dart';
+import 'package:dues/data/services/local_settings_service.dart';
+import 'package:dues/data/services/notification_service.dart';
+import 'package:dues/data/services/sms_inbox_service.dart';
 import 'package:dues/domain/models/subscription.dart';
+import 'package:dues/domain/repositories/subscription_repository.dart';
+import 'package:dues/domain/services/sms_import_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final clockProvider = Provider<DateTime>((ref) => DateTime.now());
-final repositoryProvider = Provider((ref) => FakeSubscriptionRepository());
 
-class SubscriptionsController extends Notifier<List<Subscription>> {
-  @override
-  List<Subscription> build() =>
-      ref.read(repositoryProvider).load(ref.read(clockProvider));
+final databaseProvider = Provider<AppDatabase>((ref) {
+  final database = AppDatabase();
+  ref.onDispose(database.close);
+  return database;
+});
 
-  void togglePaused(String id) {
-    state = [
-      for (final subscription in state)
-        if (subscription.id == id)
-          subscription.copyWith(isPaused: !subscription.isPaused)
-        else
-          subscription,
-    ];
-  }
+final repositoryProvider = Provider<SubscriptionRepository>((ref) {
+  return DriftSubscriptionRepository(ref.watch(databaseProvider));
+});
 
-  void remove(String id) {
-    state = state.where((subscription) => subscription.id != id).toList();
-  }
-}
+final localSettingsProvider = Provider(
+  (ref) => LocalSettingsService(ref.watch(databaseProvider)),
+);
+final smsInboxProvider = Provider((ref) => const SmsInboxService());
+final notificationServiceProvider = Provider((ref) => NotificationService());
+final smsImportServiceProvider = Provider(
+  (ref) => SmsImportService(
+    inbox: ref.watch(smsInboxProvider),
+    repository: ref.watch(repositoryProvider),
+  ),
+);
 
-final subscriptionsProvider =
-    NotifierProvider<SubscriptionsController, List<Subscription>>(
-      SubscriptionsController.new,
-    );
+final subscriptionsProvider = StreamProvider<List<Subscription>>((ref) {
+  return ref.watch(repositoryProvider).watchSubscriptions();
+});
 
 class SelectedTabController extends Notifier<int> {
   @override
