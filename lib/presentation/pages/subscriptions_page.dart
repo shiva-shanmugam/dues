@@ -1,12 +1,17 @@
+import 'dart:async';
+
 import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/core/utils/formatters.dart';
 import 'package:dues/domain/models/subscription.dart';
+import 'package:dues/parser/merchant_normalizer.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
+import 'package:dues/presentation/providers/preferences_provider.dart';
+import 'package:dues/presentation/providers/reminder_sync_provider.dart';
 import 'package:dues/presentation/widgets/dues_card.dart';
 import 'package:dues/presentation/widgets/glyph_ring.dart';
 import 'package:dues/presentation/widgets/subscription_editor_sheet.dart';
+import 'package:dues/presentation/widgets/subscription_detail_sheet.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SubscriptionsPage extends ConsumerWidget {
@@ -44,7 +49,7 @@ class SubscriptionsPage extends ConsumerWidget {
                       ],
                     ),
                   ),
-                  _AddButton(onPressed: () => _showEditor(context)),
+                  _AddButton(onPressed: () => _showEditor(context, ref)),
                 ],
               ),
               const SizedBox(height: 28),
@@ -52,7 +57,8 @@ class SubscriptionsPage extends ConsumerWidget {
                 _SubscriptionCard(
                   subscription: subscription,
                   now: now,
-                  onEdit: () => _showEditor(context, subscription),
+                  onEdit: () => _showEditor(context, ref, subscription),
+                  onTap: () => _showDetails(context, ref, subscription),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -63,8 +69,12 @@ class SubscriptionsPage extends ConsumerWidget {
     );
   }
 
-  void _showEditor(BuildContext context, [Subscription? subscription]) {
-    HapticFeedback.mediumImpact();
+  void _showEditor(
+    BuildContext context,
+    WidgetRef ref, [
+    Subscription? subscription,
+  ]) {
+    ref.read(hapticsProvider).mediumImpact();
     showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
@@ -77,6 +87,24 @@ class SubscriptionsPage extends ConsumerWidget {
         top: false,
         child: SubscriptionEditorSheet(subscription: subscription),
       ),
+    );
+  }
+
+  void _showDetails(
+    BuildContext context,
+    WidgetRef ref,
+    Subscription subscription,
+  ) {
+    ref.read(hapticsProvider).selectionClick();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DuesColors.surfaceRaised,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        side: BorderSide(color: DuesColors.outline),
+      ),
+      builder: (context) => SubscriptionDetailSheet(subscription: subscription),
     );
   }
 }
@@ -104,10 +132,12 @@ class _SubscriptionCard extends ConsumerWidget {
     required this.subscription,
     required this.now,
     required this.onEdit,
+    required this.onTap,
   });
   final Subscription subscription;
   final DateTime now;
   final VoidCallback onEdit;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -116,6 +146,7 @@ class _SubscriptionCard extends ConsumerWidget {
       opacity: subscription.isPaused ? .45 : 1,
       duration: const Duration(milliseconds: 180),
       child: DuesCard(
+        onTap: onTap,
         padding: const EdgeInsets.fromLTRB(16, 16, 8, 16),
         child: Row(
           children: [
@@ -149,7 +180,7 @@ class _SubscriptionCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    '${formatInr(subscription.amount)} · ${subscription.cycle.label}',
+                    '${formatMoney(subscription.amount, subscription.currency)} · ${subscription.cycle.label}',
                     style: const TextStyle(
                       fontSize: 10,
                       color: DuesColors.muted,
@@ -176,35 +207,55 @@ class _SubscriptionCard extends ConsumerWidget {
               color: DuesColors.surfaceRaised,
               icon: const Icon(Icons.more_vert, color: DuesColors.muted),
               onSelected: (value) async {
-                HapticFeedback.selectionClick();
-                if (value == 'pause') {
-                  await ref
-                      .read(repositoryProvider)
-                      .setPaused(
-                        subscription.id,
-                        paused: !subscription.isPaused,
-                      );
-                } else if (value == 'edit') {
+                ref.read(hapticsProvider).selectionClick();
+                if (value == 'edit') {
                   onEdit();
-                } else if (value == 'ignore') {
-                  final merchant =
-                      subscription.normalizedMerchant ?? subscription.name;
-                  await ref
-                      .read(repositoryProvider)
-                      .ignoreMerchant(merchant.toLowerCase());
-                  await ref
-                      .read(repositoryProvider)
-                      .deleteSubscription(subscription.id);
-                } else if (value == 'delete') {
-                  await ref
-                      .read(repositoryProvider)
-                      .deleteSubscription(subscription.id);
+                  return;
                 }
-                await ref
-                    .read(notificationServiceProvider)
-                    .scheduleRenewals(
-                      await ref.read(repositoryProvider).getSubscriptions(),
+                if (value == 'delete' || value == 'ignore') {
+                  final confirmed = await _confirmRemoval(
+                    context,
+                    ignore: value == 'ignore',
+                  );
+                  if (!confirmed) return;
+                }
+                try {
+                  final repository = ref.read(repositoryProvider);
+                  final sync = ref.read(reminderSyncProvider);
+                  if (value == 'pause') {
+                    await repository
+                        .setPaused(
+                          subscription.id,
+                          paused: !subscription.isPaused,
+                        )
+                        .timeout(const Duration(seconds: 10));
+                  } else if (value == 'ignore') {
+                    final merchant =
+                        subscription.normalizedMerchant ??
+                        const MerchantNormalizer().normalize(subscription.name);
+                    await repository
+                        .ignoreMerchant(merchant)
+                        .timeout(const Duration(seconds: 10));
+                    await repository
+                        .deleteSubscription(subscription.id)
+                        .timeout(const Duration(seconds: 10));
+                  } else if (value == 'delete') {
+                    await repository
+                        .deleteSubscription(subscription.id)
+                        .timeout(const Duration(seconds: 10));
+                  }
+                  unawaited(sync.sync());
+                } catch (_) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Could not update this subscription. Please try again.',
+                        ),
+                      ),
                     );
+                  }
+                }
               },
               itemBuilder: (context) => [
                 PopupMenuItem(
@@ -229,5 +280,38 @@ class _SubscriptionCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<bool> _confirmRemoval(
+    BuildContext context, {
+    required bool ignore,
+  }) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text(
+              ignore ? 'Not a subscription?' : 'Delete ${subscription.name}?',
+            ),
+            content: Text(
+              ignore
+                  ? 'Remove this item and ignore future SMS from this merchant during scans. You can allow it again in Settings → Ignored merchants.'
+                  : 'Remove this saved item. A future SMS scan may detect it again. To prevent that, choose “Not a subscription” instead.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('CANCEL'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  ignore ? 'REMOVE & IGNORE' : 'DELETE',
+                  style: const TextStyle(color: DuesColors.red),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 }

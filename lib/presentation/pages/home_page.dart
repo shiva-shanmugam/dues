@@ -2,8 +2,10 @@ import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/core/utils/formatters.dart';
 import 'package:dues/domain/models/subscription.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
+import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/widgets/dues_card.dart';
 import 'package:dues/presentation/widgets/glyph_ring.dart';
+import 'package:dues/presentation/widgets/subscription_detail_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,14 +18,18 @@ class HomePage extends ConsumerWidget {
         ref.watch(subscriptionsProvider).value ?? const <Subscription>[];
     final now = ref.watch(clockProvider);
     final active = subscriptions.where((item) => !item.isPaused).toList();
-    final monthly = active.fold<double>(
+    final currency = ref.watch(appPreferencesProvider).value?.currency ?? 'INR';
+    final inCurrency = active
+        .where((item) => item.currency == currency)
+        .toList();
+    final monthly = inCurrency.fold<double>(
       0,
       (sum, item) => sum + item.monthlyEquivalent,
     );
     final upcoming =
         active.where((item) => item.daysRemainingFrom(now) <= 7).toList()
           ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
-    final costliest = [...active]
+    final costliest = [...inCurrency]
       ..sort((a, b) => b.monthlyEquivalent.compareTo(a.monthlyEquivalent));
 
     return CustomScrollView(
@@ -35,9 +41,24 @@ class HomePage extends ConsumerWidget {
             children: [
               _Header(count: active.length),
               const SizedBox(height: 28),
-              _MonthlyHero(monthly: monthly),
+              _MonthlyHero(monthly: monthly, currency: currency),
+              if (inCurrency.length != active.length) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Totals and cost ranking are in $currency. Other currencies stay separate; no conversion is applied.',
+                  style: const TextStyle(
+                    color: DuesColors.muted,
+                    fontSize: 9,
+                    height: 1.5,
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
-              _MetricGrid(monthly: monthly, upcomingCount: upcoming.length),
+              _MetricGrid(
+                monthly: monthly,
+                upcomingCount: upcoming.length,
+                currency: currency,
+              ),
               const SizedBox(height: 30),
               _SectionLabel(
                 title: 'NEXT 7 DAYS',
@@ -107,8 +128,9 @@ class _Header extends StatelessWidget {
 }
 
 class _MonthlyHero extends StatelessWidget {
-  const _MonthlyHero({required this.monthly});
+  const _MonthlyHero({required this.monthly, required this.currency});
   final double monthly;
+  final String currency;
 
   @override
   Widget build(BuildContext context) => DuesCard(
@@ -129,7 +151,7 @@ class _MonthlyHero extends StatelessWidget {
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
           child: Text(
-            formatInr(monthly),
+            formatMoney(monthly, currency),
             style: Theme.of(context).textTheme.dotNumber.copyWith(fontSize: 52),
           ),
         ),
@@ -183,9 +205,14 @@ class _LivePill extends StatelessWidget {
 }
 
 class _MetricGrid extends StatelessWidget {
-  const _MetricGrid({required this.monthly, required this.upcomingCount});
+  const _MetricGrid({
+    required this.monthly,
+    required this.upcomingCount,
+    required this.currency,
+  });
   final double monthly;
   final int upcomingCount;
+  final String currency;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -193,7 +220,7 @@ class _MetricGrid extends StatelessWidget {
       Expanded(
         child: _MetricCard(
           label: 'YEARLY PROJECTION',
-          value: formatInr(monthly * 12),
+          value: formatMoney(monthly * 12, currency),
           icon: Icons.trending_up,
         ),
       ),
@@ -286,6 +313,7 @@ class _UpcomingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final days = subscription.daysRemainingFrom(now);
     return DuesCard(
+      onTap: () => _showDetails(context, subscription),
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
@@ -315,7 +343,7 @@ class _UpcomingRow extends StatelessWidget {
             ),
           ),
           Text(
-            formatInr(subscription.amount),
+            formatMoney(subscription.amount, subscription.currency),
             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           ),
         ],
@@ -329,24 +357,44 @@ class _CostRow extends StatelessWidget {
   final int index;
   final Subscription subscription;
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Text(
-        index.toString().padLeft(2, '0'),
-        style: const TextStyle(color: DuesColors.muted, fontSize: 10),
+  Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(12),
+    onTap: () => _showDetails(context, subscription),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Text(
+            index.toString().padLeft(2, '0'),
+            style: const TextStyle(color: DuesColors.muted, fontSize: 10),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              subscription.name,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+          ),
+          Text(
+            '${formatMoney(subscription.monthlyEquivalent, subscription.currency)}/MO',
+            style: const TextStyle(fontSize: 10, color: DuesColors.muted),
+          ),
+        ],
       ),
-      const SizedBox(width: 14),
-      Expanded(
-        child: Text(
-          subscription.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        ),
-      ),
-      Text(
-        '${formatInr(subscription.monthlyEquivalent)}/MO',
-        style: const TextStyle(fontSize: 10, color: DuesColors.muted),
-      ),
-    ],
+    ),
+  );
+}
+
+void _showDetails(BuildContext context, Subscription subscription) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: DuesColors.surfaceRaised,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      side: BorderSide(color: DuesColors.outline),
+    ),
+    builder: (context) => SubscriptionDetailSheet(subscription: subscription),
   );
 }
 

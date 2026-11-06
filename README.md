@@ -47,11 +47,17 @@ The pure-Dart parser then:
 
 Recurring interval detection requires at least two matching occurrences. A single explicit auto-debit, mandate, renewal, or trial signal is retained as a monthly candidate until more history is available. Marking an item “Not a subscription” stores its normalized merchant in the ignored table so future scans skip it.
 
+Tap a subscription on Home or Subscriptions to inspect its latest 10 matching saved SMS messages, including sender, date, amount, and full original text. Manually entered items have no linked SMS; manually adjusted detected items keep their original merchant link and history. A rescan refreshes message history without overwriting manually adjusted subscription fields.
+
+**Delete** removes the saved subscription; a later SMS scan can detect it again. **Not a subscription** removes the item and ignores the merchant in future scans. Settings → Ignored merchants lists these rules and lets you restore a merchant for the next scan. Neither action cancels a membership with the provider or deletes SMS from the phone.
+
 Parser tests include more than 25 realistic examples covering banks, cards, UPI apps, merchant variants, decimal and comma-separated amounts, OTPs, credits, refunds, one-off purchases, promotions, and irregular recurrence.
 
 ## Notifications
 
 `flutter_local_notifications` schedules two local reminders at 09:00 local time: three days and one day before renewal. Inexact idle-safe alarms avoid exact-alarm permission. Scheduled-notification receivers restore alarms after reboot or app replacement. A daily WorkManager task re-reads Drift and reconciles schedules while the app is closed. Editing, pausing, deleting, or importing subscriptions also immediately reschedules reminders.
+
+Saving a subscription completes as soon as the database write succeeds. Reminder refresh runs separately, reports failures, and cannot leave the editor stuck loading. Turning renewal alerts off cancels scheduled reminders; background reconciliation respects the saved preference.
 
 ## Other local features
 
@@ -59,6 +65,11 @@ Parser tests include more than 25 realistic examples covering banks, cards, UPI 
 - Ignored-merchant learning
 - CSV export through Android's share sheet
 - Dashboard monthly equivalent, yearly projection, upcoming renewals, and cost ranking
+- Persistent currency selection (INR/USD/EUR/GBP) for new manual entries and dashboard totals. Existing transaction currencies remain unchanged; totals and rankings are filtered by currency with no exchange-rate conversion.
+- Persistent haptic toggle respected by key interactions
+- Editable India plan suggestions for Netflix, Amazon Prime, and Spotify, bundled offline with source links and a check date. Suggestions populate amount and billing cycle; the user can change either or enter any service manually.
+
+Plan reference sources (checked 6 November 2026): [Netflix India](https://qr.netflix.com/in/title/80178726), [Amazon Prime India](https://www.aboutamazon.in/news/retail/how-to-sign-up-for-a-prime-membership), and [Spotify India](https://www.spotify.com/in-en/premium/). Promotions, student eligibility, and account-specific charges can differ; the actual bill takes precedence. These pages are not fetched by the app at runtime.
 
 ## Verify
 
