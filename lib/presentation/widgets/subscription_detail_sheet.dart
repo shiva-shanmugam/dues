@@ -71,13 +71,9 @@ class _SubscriptionDetailSheetState
 
   Future<void> _edit() async {
     ref.read(hapticsProvider).selectionClick();
-    final saved = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => SafeArea(
-        top: false,
-        child: SubscriptionEditorSheet(subscription: widget.subscription),
-      ),
+    final saved = await showSubscriptionEditor(
+      context,
+      subscription: widget.subscription.copyWith(isPaused: _paused),
     );
     if (saved == true && mounted) Navigator.pop(context);
   }
@@ -135,166 +131,173 @@ class _SubscriptionDetailSheetState
       top: false,
       child: SizedBox(
         height: MediaQuery.sizeOf(context).height * .92,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 32),
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: InkWell(
-                onTap: () => Navigator.pop(context),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 44),
-                  child: const Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      '< ALL SUBSCRIPTIONS',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11,
-                        letterSpacing: .7,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              subscription.name.toUpperCase(),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.receiptHeading,
-            ),
-            const SizedBox(height: 20),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text.rich(
-                TextSpan(
-                  text: formatReceiptAmount(
-                    subscription.amount,
-                    currency: subscription.currency,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: '/${subscription.cycle.label.toUpperCase()}',
-                      style: TextStyle(
-                        color: context.receipt.muted,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ],
-                ),
-                style: Theme.of(context).textTheme.receiptTotal,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              '${subscription.isAutoDetected ? 'DETECTED FROM SMS' : 'SAVED LOCALLY'} · NEXT ${formatShortDate(subscription.nextDueDate)}',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: context.receipt.muted,
-                fontSize: 11,
-                letterSpacing: .5,
-              ),
-            ),
-            const SizedBox(height: 28),
-            const SectionHeader('CHARGE HISTORY'),
-            const SizedBox(height: 8),
-            FutureBuilder<List<TransactionRecord>>(
-              future: _history,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 30),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                if (snapshot.hasError) {
-                  return _HistoryMessage(
-                    message: 'COULD NOT LOAD SAVED MESSAGES.',
-                    action: () => setState(() => _history = _loadHistory()),
-                  );
-                }
-                final messages = snapshot.data ?? const [];
-                if (subscription.normalizedMerchant == null) {
-                  return const _HistoryMessage(
-                    message: 'Added manually. This subscription has no linked SMS history.',
-                  );
-                }
-                if (messages.isEmpty) {
-                  return const _HistoryMessage(
-                    message: 'NO SAVED TRANSACTION MESSAGES MATCH THIS MERCHANT YET.',
-                  );
-                }
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    for (final message in messages) ...[
-                      LeaderLine(
-                        label:
-                            '${formatShortDate(message.occurredAt)} ${message.occurredAt.year}',
-                        amount: formatReceiptAmount(
-                          message.amount,
-                          currency: message.currency,
-                        ),
-                      ),
-                      Text(
-                        'SOURCE SMS · ${message.sender.toUpperCase()}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: InkWell(
+                  onTap: () => Navigator.pop(context),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    child: const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '< ALL SUBSCRIPTIONS',
                         style: TextStyle(
-                          color: context.receipt.muted,
-                          fontSize: 10,
-                          letterSpacing: .5,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      SelectableText(
-                        message.body,
-                        style: TextStyle(
-                          color: context.receipt.muted,
+                          fontWeight: FontWeight.w600,
                           fontSize: 11,
-                          height: 1.5,
+                          letterSpacing: .7,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const DashedDivider(height: 1, dash: 2, gap: 4),
-                    ],
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 28),
-            ReceiptButton(
-              label: _paused ? 'RESUME REMINDERS' : 'PAUSE REMINDERS',
-              onPressed: _togglePause,
-              busy: _changingPause,
-            ),
-            const SizedBox(height: 12),
-            ReceiptButton(
-              label: 'NOT A SUBSCRIPTION',
-              variant: ReceiptButtonVariant.dashed,
-              onPressed: () => _remove(ignore: true),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: _TextAction(label: 'EDIT DETAILS', onTap: _edit),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _TextAction(
-                    label: 'DELETE',
-                    onTap: () => _remove(ignore: false),
+                    ),
                   ),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subscription.name.toUpperCase(),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.receiptHeading,
+              ),
+              const SizedBox(height: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text.rich(
+                  TextSpan(
+                    text: formatReceiptAmount(
+                      subscription.amount,
+                      currency: subscription.currency,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '/${subscription.cycle.label.toUpperCase()}',
+                        style: TextStyle(
+                          color: context.receipt.muted,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                  style: Theme.of(context).textTheme.receiptTotal,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '${subscription.isAutoDetected ? 'DETECTED FROM SMS' : 'SAVED LOCALLY'} · NEXT ${formatShortDate(subscription.nextDueDate)}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: context.receipt.muted,
+                  fontSize: 11,
+                  letterSpacing: .5,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const SectionHeader('CHARGE HISTORY'),
+              const SizedBox(height: 8),
+              Expanded(
+                child: FutureBuilder<List<TransactionRecord>>(
+                  future: _history,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 30),
+                        child: Center(child: CircularProgressIndicator()),
+                      );
+                    }
+                    if (snapshot.hasError) {
+                      return _HistoryMessage(
+                        message: 'COULD NOT LOAD SAVED MESSAGES.',
+                        action: () => setState(() => _history = _loadHistory()),
+                      );
+                    }
+                    final messages = snapshot.data ?? const [];
+                    if (subscription.normalizedMerchant == null) {
+                      return const _HistoryMessage(
+                        message: 'Added manually. This subscription has no linked SMS history.',
+                      );
+                    }
+                    if (messages.isEmpty) {
+                      return const _HistoryMessage(
+                        message: 'NO SAVED TRANSACTION MESSAGES MATCH THIS MERCHANT YET.',
+                      );
+                    }
+                    return ListView(
+                      key: const ValueKey('sms-history-scroll'),
+                      padding: EdgeInsets.zero,
+                      children: [
+                        for (final message in messages) ...[
+                          LeaderLine(
+                            label:
+                                '${formatShortDate(message.occurredAt)} ${message.occurredAt.year}',
+                            amount: formatReceiptAmount(
+                              message.amount,
+                              currency: message.currency,
+                            ),
+                          ),
+                          Text(
+                            'SOURCE SMS · ${message.sender.toUpperCase()}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: context.receipt.muted,
+                              fontSize: 10,
+                              letterSpacing: .5,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          SelectableText(
+                            message.body,
+                            style: TextStyle(
+                              color: context.receipt.muted,
+                              fontSize: 11,
+                              height: 1.5,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const DashedDivider(height: 1, dash: 2, gap: 4),
+                        ],
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const DashedDivider(),
+              const SizedBox(height: 10),
+              ReceiptButton(
+                label: _paused ? 'RESUME REMINDERS' : 'PAUSE REMINDERS',
+                onPressed: _togglePause,
+                busy: _changingPause,
+              ),
+              const SizedBox(height: 8),
+              ReceiptButton(
+                label: 'NOT A SUBSCRIPTION',
+                variant: ReceiptButtonVariant.dashed,
+                onPressed: () => _remove(ignore: true),
+              ),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Expanded(
+                    child: _TextAction(label: 'EDIT DETAILS', onTap: _edit),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _TextAction(
+                      label: 'DELETE',
+                      onTap: () => _remove(ignore: false),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

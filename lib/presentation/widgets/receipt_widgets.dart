@@ -70,6 +70,7 @@ class LeaderLine extends StatelessWidget {
     this.labelStyle,
     this.amountStyle,
     this.onTap,
+    this.trailing,
     super.key,
   });
 
@@ -78,49 +79,75 @@ class LeaderLine extends StatelessWidget {
   final TextStyle? labelStyle;
   final TextStyle? amountStyle;
   final VoidCallback? onTap;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
     final tokens = context.receipt;
     final child = ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 44),
-      child: Row(
-        children: [
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: labelStyle ?? TextStyle(color: tokens.ink, fontSize: 14),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final count = math.max(1, (constraints.maxWidth / 7).floor());
-                return Text(
-                  List.filled(count, '.').join(),
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  style: TextStyle(color: tokens.muted, fontSize: 12),
-                );
-              },
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            amount,
-            maxLines: 1,
-            style:
-                amountStyle ??
-                TextStyle(
-                  color: tokens.ink,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
+      child: LayoutBuilder(
+        builder: (context, constraints) => Row(
+          children: [
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, leftConstraints) => Row(
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: leftConstraints.maxWidth * .8,
+                      ),
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style:
+                            labelStyle ??
+                            TextStyle(color: tokens.ink, fontSize: 14),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final count = math.max(
+                            1,
+                            (constraints.maxWidth / 7).floor(),
+                          );
+                          return Text(
+                            List.filled(count, '.').join(),
+                            maxLines: 1,
+                            overflow: TextOverflow.clip,
+                            style: TextStyle(color: tokens.muted, fontSize: 12),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-          ),
-        ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth * .65),
+              child:
+                  trailing ??
+                  Text(
+                    amount,
+                    maxLines: 1,
+                    textAlign: TextAlign.right,
+                    overflow: TextOverflow.ellipsis,
+                    style:
+                        amountStyle ??
+                        TextStyle(
+                          color: tokens.ink,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
+                        ),
+                  ),
+            ),
+          ],
+        ),
       ),
     );
     if (onTap == null) return child;

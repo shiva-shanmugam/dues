@@ -13,9 +13,34 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+Future<bool?> showSubscriptionEditor(
+  BuildContext context, {
+  Subscription? subscription,
+}) => showModalBottomSheet<bool>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  showDragHandle: true,
+  builder: (context) => DraggableScrollableSheet(
+    expand: false,
+    initialChildSize: .9,
+    minChildSize: .3,
+    maxChildSize: .95,
+    builder: (context, controller) => SubscriptionEditorSheet(
+      subscription: subscription,
+      scrollController: controller,
+    ),
+  ),
+);
+
 class SubscriptionEditorSheet extends ConsumerStatefulWidget {
-  const SubscriptionEditorSheet({this.subscription, super.key});
+  const SubscriptionEditorSheet({
+    this.subscription,
+    this.scrollController,
+    super.key,
+  });
   final Subscription? subscription;
+  final ScrollController? scrollController;
 
   @override
   ConsumerState<SubscriptionEditorSheet> createState() =>
@@ -161,6 +186,8 @@ class _SubscriptionEditorSheetState
         maxHeight: MediaQuery.sizeOf(context).height * .92,
       ),
       child: SingleChildScrollView(
+        controller: widget.scrollController,
+        physics: const ClampingScrollPhysics(),
         padding: EdgeInsets.fromLTRB(
           22,
           12,

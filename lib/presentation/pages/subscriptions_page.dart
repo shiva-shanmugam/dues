@@ -69,12 +69,7 @@ class SubscriptionsPage extends ConsumerWidget {
 
   void _showEditor(BuildContext context, WidgetRef ref) {
     ref.read(hapticsProvider).selectionClick();
-    showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) =>
-          const SafeArea(top: false, child: SubscriptionEditorSheet()),
-    );
+    showSubscriptionEditor(context);
   }
 
   void _showDetails(
@@ -86,6 +81,7 @@ class SubscriptionsPage extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      enableDrag: false,
       builder: (context) => SubscriptionDetailSheet(subscription: subscription),
     );
   }

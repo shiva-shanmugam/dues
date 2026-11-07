@@ -40,12 +40,8 @@ void main() {
           home: Scaffold(
             body: Builder(
               builder: (context) => TextButton(
-                onPressed: () => showModalBottomSheet<bool>(
-                  context: context,
-                  isScrollControlled: true,
-                  builder: (_) =>
-                      SubscriptionEditorSheet(subscription: subscription),
-                ),
+                onPressed: () =>
+                    showSubscriptionEditor(context, subscription: subscription),
                 child: const Text('OPEN'),
               ),
             ),
@@ -112,6 +108,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(repository.saved!.amount, 149.5);
     expect(find.byType(SubscriptionEditorSheet), findsNothing);
+  });
+
+  testWidgets('manual and autopay editors both dismiss with a downward drag', (
+    tester,
+  ) async {
+    for (final automatic in [false, true]) {
+      final repository = _Repository();
+      final sync = _ReminderSync(repository);
+      await openEditor(
+        tester,
+        repository,
+        sync,
+        subscription: existing.copyWith(isAutoDetected: automatic),
+      );
+      await tester.drag(find.text('EDIT SUBSCRIPTION'), const Offset(0, 600));
+      await tester.pumpAndSettle();
+      expect(find.byType(SubscriptionEditorSheet), findsNothing);
+      expect(repository.saved, isNull);
+      await tester.pumpWidget(const SizedBox());
+    }
   });
 
   testWidgets('popular plan fills price and cycle and accepts a manual price', (

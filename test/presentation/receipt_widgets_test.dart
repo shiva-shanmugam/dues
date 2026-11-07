@@ -4,6 +4,33 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('short and long leader rows share the right edge', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: DuesTheme.light,
+        home: const Scaffold(
+          body: SizedBox(
+            width: 320,
+            child: Column(
+              children: [
+                LeaderLine(label: 'SMS ACCESS', amount: 'REQUIRED'),
+                LeaderLine(
+                  label: 'A MUCH LONGER MERCHANT NAME',
+                  amount: '₹649.00',
+                ),
+                LeaderLine(label: 'N', amount: '₹1,299.00'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    for (final value in ['REQUIRED', '₹649.00', '₹1,299.00']) {
+      expect(tester.getRect(find.text(value)).right, closeTo(320, .01));
+    }
+  });
   testWidgets('LeaderLine handles long names and large Indian amounts', (
     tester,
   ) async {
