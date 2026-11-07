@@ -57,19 +57,6 @@ extension ReceiptThemeContext on BuildContext {
       Theme.of(this).extension<ReceiptTokens>() ?? ReceiptTokens.light;
 }
 
-// Temporary compatibility tokens while the existing screens are migrated in
-// the following staged commits. Receipt widgets use the dynamic theme tokens.
-abstract final class DuesColors {
-  static const black = Color(0xFF121212);
-  static const surface = Color(0xFF121212);
-  static const surfaceRaised = Color(0xFF121212);
-  static const offWhite = Color(0xFFF2EFE6);
-  static const muted = Color(0xFFA09B8F);
-  static const outline = Color(0xFFF2EFE6);
-  static const gridDot = Color(0xFF121212);
-  static const red = Color(0xFFF2EFE6);
-}
-
 abstract final class DuesTheme {
   static ThemeData get light => _build(ReceiptTokens.light, Brightness.light);
   static ThemeData get dark => _build(ReceiptTokens.dark, Brightness.dark);
@@ -220,8 +207,4 @@ extension DuesText on TextTheme {
     fontSize: 12,
     letterSpacing: 1,
   );
-
-  TextStyle get dotTitle => receiptHeading;
-  TextStyle get dotNumber => receiptTotal;
-  TextStyle get label => receiptLabel;
 }

@@ -9,6 +9,8 @@ import 'package:dues/domain/repositories/subscription_repository.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/reminder_sync_provider.dart';
+import 'package:dues/presentation/providers/theme_mode_provider.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -44,6 +46,22 @@ void main() {
       expect(restored.renewalAlertsEnabled, isFalse);
     },
   );
+
+  test('theme mode defaults to system and survives provider reload', () async {
+    final database = AppDatabase(executor: NativeDatabase.memory());
+    final container = ProviderContainer(
+      overrides: [databaseProvider.overrideWithValue(database)],
+    );
+    addTearDown(() async {
+      container.dispose();
+      await database.close();
+    });
+
+    expect(await container.read(themeModeProvider.future), ThemeMode.system);
+    await container.read(themeModeProvider.notifier).setMode(ThemeMode.dark);
+    container.invalidate(themeModeProvider);
+    expect(await container.read(themeModeProvider.future), ThemeMode.dark);
+  });
 
   test('disabled haptics never invokes platform feedback', () async {
     final calls = <MethodCall>[];

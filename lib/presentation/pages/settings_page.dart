@@ -6,7 +6,8 @@ import 'package:dues/core/utils/formatters.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/reminder_sync_provider.dart';
-import 'package:dues/presentation/widgets/dues_card.dart';
+import 'package:dues/presentation/providers/theme_mode_provider.dart';
+import 'package:dues/presentation/widgets/receipt_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -24,6 +25,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool scanning = false;
   bool changingAlerts = false;
 
+  static const _currencyNames = {
+    'INR': 'INDIAN RUPEE',
+    'USD': 'US DOLLAR',
+    'EUR': 'EURO',
+    'GBP': 'BRITISH POUND',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -35,7 +43,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       final granted = await ref.read(smsInboxProvider).hasPermission();
       if (mounted) setState(() => smsGranted = granted);
     } catch (_) {
-      // SMS support is Android-only; manual tracking still works elsewhere.
+      // SMS support is Android-only; manual tracking remains available.
     }
   }
 
@@ -44,149 +52,95 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final preferences = ref.watch(appPreferencesProvider);
     final current = preferences.value;
     final ignored = ref.watch(ignoredMerchantsProvider);
+    final ignoredCount = ignored.value?.length;
+
     return CustomScrollView(
       key: const PageStorageKey('settings-scroll'),
       slivers: [
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(20, 22, 20, 32),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
           sliver: SliverList.list(
             children: [
-              Text('SETTINGS', style: Theme.of(context).textTheme.dotTitle),
-              const SizedBox(height: 6),
-              Text(
-                'PRIVATE BY DESIGN',
-                style: Theme.of(context).textTheme.label,
+              Text('CONFIG', style: Theme.of(context).textTheme.receiptHeading),
+              const SizedBox(height: 16),
+              const DashedDivider(),
+              const SizedBox(height: 28),
+              const SectionHeader('THEME'),
+              const SizedBox(height: 14),
+              const _ThemeSelector(),
+              const SizedBox(height: 30),
+              const SectionHeader('DATA & PERMISSIONS'),
+              const SizedBox(height: 4),
+              LeaderLine(
+                label: 'SMS ACCESS',
+                amount: scanning
+                    ? 'SCANNING...'
+                    : smsGranted
+                    ? 'GRANTED'
+                    : 'REQUIRED',
+                onTap: scanning ? null : _scanSms,
               ),
-              const SizedBox(height: 28),
-              const _PrivacyCard(),
-              const SizedBox(height: 28),
-              _sectionLabel(context, 'DATA & PERMISSIONS'),
-              const SizedBox(height: 12),
-              DuesCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    _SettingRow(
-                      icon: Icons.sms_outlined,
-                      title: 'SMS ACCESS',
-                      subtitle: scanning
-                          ? 'Scanning messages…'
-                          : (smsGranted
-                                ? 'Connected · tap to rescan'
-                                : 'Not connected · tap to allow'),
-                      trailing: Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: smsGranted
-                              ? DuesColors.offWhite
-                              : DuesColors.red,
-                        ),
-                      ),
-                      onTap: scanning ? null : _scanSms,
-                    ),
-                    const Divider(height: 1),
-                    _SettingRow(
-                      icon: Icons.notifications_none,
-                      title: 'RENEWAL ALERTS',
-                      subtitle: changingAlerts
-                          ? 'Updating reminders…'
-                          : '3 days and 1 day before',
-                      onTap: current == null || changingAlerts
-                          ? null
-                          : () => _setAlerts(!current.renewalAlertsEnabled),
-                      trailing: Switch(
-                        value: current?.renewalAlertsEnabled ?? false,
-                        activeThumbColor: DuesColors.offWhite,
-                        activeTrackColor: DuesColors.red,
-                        onChanged: current == null || changingAlerts
-                            ? null
-                            : _setAlerts,
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    _SettingRow(
-                      icon: Icons.file_download_outlined,
-                      title: 'EXPORT CSV',
-                      subtitle: 'Save or share a local copy',
-                      onTap: _exportCsv,
-                    ),
-                  ],
-                ),
+              const DashedDivider(height: 1, dash: 2, gap: 4),
+              LeaderLine(
+                label: 'RENEWAL ALERTS',
+                amount: changingAlerts
+                    ? 'SAVING...'
+                    : current?.renewalAlertsEnabled == true
+                    ? 'ON'
+                    : 'OFF',
+                onTap: current == null || changingAlerts
+                    ? null
+                    : () => _setAlerts(!current.renewalAlertsEnabled),
               ),
-              const SizedBox(height: 28),
-              _sectionLabel(context, 'PREFERENCES'),
-              const SizedBox(height: 12),
+              const DashedDivider(height: 1, dash: 2, gap: 4),
+              const LeaderLine(label: 'REMINDER TIMING', amount: '3D + 1D'),
+              const DashedDivider(height: 1, dash: 2, gap: 4),
+              LeaderLine(
+                label: 'EXPORT CSV',
+                amount: 'SHARE',
+                onTap: _exportCsv,
+              ),
+              const SizedBox(height: 30),
+              const SectionHeader('PREFERENCES'),
+              const SizedBox(height: 4),
+              LeaderLine(
+                label: 'CURRENCY',
+                amount: current?.currency ?? '...',
+                onTap: current == null ? null : _chooseCurrency,
+              ),
+              const DashedDivider(height: 1, dash: 2, gap: 4),
+              LeaderLine(
+                key: const ValueKey('haptic-row'),
+                label: 'HAPTIC TICKS',
+                amount: current?.hapticsEnabled == true ? 'ON' : 'OFF',
+                onTap: current == null
+                    ? null
+                    : () => _setHaptics(!current.hapticsEnabled),
+              ),
+              const DashedDivider(height: 1, dash: 2, gap: 4),
+              LeaderLine(
+                label: 'IGNORED MERCHANTS',
+                amount: ignoredCount == null ? '...' : '$ignoredCount',
+                onTap: _showIgnoredMerchants,
+              ),
               if (preferences.hasError) ...[
-                TextButton(
+                const SizedBox(height: 14),
+                ReceiptButton(
+                  label: 'RETRY PREFERENCES',
+                  variant: ReceiptButtonVariant.dashed,
                   onPressed: () => ref.invalidate(appPreferencesProvider),
-                  child: const Text(
-                    'Could not load preferences. Tap to retry.',
-                  ),
                 ),
               ],
-              DuesCard(
-                padding: EdgeInsets.zero,
-                child: Column(
-                  children: [
-                    _SettingRow(
-                      icon: Icons.currency_exchange,
-                      title: 'CURRENCY',
-                      subtitle: current == null
-                          ? 'Loading…'
-                          : '${_currencyNames[current.currency] ?? current.currency} · totals & new entries',
-                      trailing: const Icon(
-                        Icons.chevron_right,
-                        color: DuesColors.muted,
-                      ),
-                      onTap: current == null ? null : _chooseCurrency,
-                    ),
-                    const Divider(height: 1),
-                    _SettingRow(
-                      icon: Icons.vibration,
-                      title: 'HAPTIC TICKS',
-                      subtitle: current?.hapticsEnabled == true ? 'On' : 'Off',
-                      onTap: current == null
-                          ? null
-                          : () => _setHaptics(!current.hapticsEnabled),
-                      trailing: Switch(
-                        key: const ValueKey('haptic-switch'),
-                        value: current?.hapticsEnabled ?? false,
-                        activeThumbColor: DuesColors.offWhite,
-                        activeTrackColor: DuesColors.red,
-                        onChanged: current == null ? null : _setHaptics,
-                      ),
-                    ),
-                    const Divider(height: 1),
-                    _SettingRow(
-                      icon: Icons.block_outlined,
-                      title: 'IGNORED MERCHANTS',
-                      subtitle: ignored.when(
-                        data: (merchants) => merchants.isEmpty
-                            ? 'No merchants ignored'
-                            : '${merchants.length} ignored · tap to manage',
-                        loading: () => 'Loading…',
-                        error: (_, _) => 'Tap to retry',
-                      ),
-                      trailing: const Icon(
-                        Icons.chevron_right,
-                        color: DuesColors.muted,
-                      ),
-                      onTap: _showIgnoredMerchants,
-                    ),
-                  ],
-                ),
-              ),
+              const SizedBox(height: 32),
+              const _PrivacyNotice(),
               const SizedBox(height: 28),
-              const Center(
-                child: Text(
-                  'DUES / LOCAL FIRST',
-                  style: TextStyle(
-                    fontSize: 8,
-                    letterSpacing: 1,
-                    color: DuesColors.muted,
-                  ),
+              Text(
+                'DUES / LOCAL FIRST / NO NETWORK',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: context.receipt.muted,
+                  fontSize: 10,
+                  letterSpacing: 1,
                 ),
               ),
             ],
@@ -196,25 +150,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  Widget _sectionLabel(BuildContext context, String text) => Text(
-    text,
-    style: Theme.of(context).textTheme.label
-        .copyWith(color: DuesColors.offWhite),
-  );
-
   void _message(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: const TextStyle(fontSize: 11)),
-        backgroundColor: DuesColors.surfaceRaised,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: DuesColors.outline),
-        ),
-      ),
-    );
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message.toUpperCase())));
   }
 
   Future<void> _setAlerts(bool enabled) async {
@@ -227,9 +166,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             .requestPermission()
             .timeout(const Duration(seconds: 30));
         if (!granted) {
-          _message(
-            'Allow notifications in Android settings to enable renewal alerts.',
-          );
+          _message('Allow notifications in Android settings to enable alerts.');
           return;
         }
       }
@@ -238,9 +175,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           .setRenewalAlertsEnabled(enabled);
       final synced = await ref.read(reminderSyncProvider).sync();
       if (!synced) {
-        _message(
-          'Preference saved. Reminder scheduling will retry in the background.',
-        );
+        _message('Preference saved. Reminder scheduling will retry.');
       }
     } catch (_) {
       _message('Could not update renewal alerts. Please try again.');
@@ -260,59 +195,38 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-  static const _currencyNames = {
-    'INR': 'Indian rupee (INR)',
-    'USD': 'US dollar (USD)',
-    'EUR': 'Euro (EUR)',
-    'GBP': 'British pound (GBP)',
-  };
-
   Future<void> _chooseCurrency() async {
     ref.read(hapticsProvider).selectionClick();
     final current = ref.read(appPreferencesProvider).value?.currency ?? 'INR';
     final selected = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: DuesColors.surfaceRaised,
-      showDragHandle: true,
       builder: (context) => SafeArea(
-        child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'DEFAULT CURRENCY',
-                      style: Theme.of(context).textTheme.dotTitle
-                          .copyWith(fontSize: 26),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Used for new manual subscriptions and to choose the currency shown in dashboard totals. Existing charges keep their original currency; no exchange conversion is applied.',
-                      style: TextStyle(
-                        color: DuesColors.muted,
-                        fontSize: 11,
-                        height: 1.6,
-                      ),
-                    ),
-                  ],
+              const SectionHeader('DEFAULT CURRENCY'),
+              const SizedBox(height: 12),
+              Text(
+                'USED FOR NEW MANUAL ENTRIES AND STATEMENT TOTALS. EXISTING CHARGES KEEP THEIR ORIGINAL CURRENCY.',
+                style: TextStyle(
+                  color: context.receipt.muted,
+                  fontSize: 10,
+                  height: 1.5,
                 ),
               ),
-              for (final entry in _currencyNames.entries)
-                ListTile(
-                  title: Text(
-                    entry.value,
-                    style: const TextStyle(fontSize: 13),
-                  ),
-                  trailing: current == entry.key
-                      ? const Icon(Icons.check, color: DuesColors.red)
-                      : null,
+              const SizedBox(height: 12),
+              for (final entry in _currencyNames.entries) ...[
+                LeaderLine(
+                  label: entry.value,
+                  amount: current == entry.key ? '[${entry.key}]' : entry.key,
                   onTap: () => Navigator.pop(context, entry.key),
                 ),
+                const DashedDivider(height: 1, dash: 2, gap: 4),
+              ],
             ],
           ),
         ),
@@ -331,15 +245,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     ref.invalidate(ignoredMerchantsProvider);
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: DuesColors.surfaceRaised,
-      showDragHandle: true,
       isScrollControlled: true,
       builder: (context) => const _IgnoredMerchantsSheet(),
     );
   }
 
   Future<void> _scanSms() async {
-    ref.read(hapticsProvider).mediumImpact();
+    ref.read(hapticsProvider).selectionClick();
     setState(() => scanning = true);
     try {
       var granted = await ref.read(smsInboxProvider).hasPermission();
@@ -348,7 +260,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       }
       if (!granted) {
         _message(
-          'SMS access was not granted. You can still add subscriptions manually.',
+          'SMS access was not granted. Manual tracking stays available.',
         );
         return;
       }
@@ -356,7 +268,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       final synced = await ref.read(reminderSyncProvider).sync();
       if (mounted) setState(() => smsGranted = true);
       _message(
-        'Scanned ${result.messagesRead} messages · found ${result.subscriptionsFound} subscriptions.${synced ? '' : ' Reminder scheduling will retry.'}',
+        'Scanned ${result.messagesRead} messages / found ${result.subscriptionsFound}.${synced ? '' : ' Reminder scheduling will retry.'}',
       );
     } catch (_) {
       _message('Could not finish scanning messages. Please try again.');
@@ -390,8 +302,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       await SharePlus.instance.share(
         ShareParams(
           title: 'Dues subscriptions',
-          text:
-              'Local Dues subscription export · ${formatShortDate(DateTime.now())}',
+          text: 'Local Dues export / ${formatShortDate(DateTime.now())}',
           files: [XFile(file.path, mimeType: 'text/csv')],
         ),
       );
@@ -401,33 +312,88 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 }
 
+class _ThemeSelector extends ConsumerWidget {
+  const _ThemeSelector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncMode = ref.watch(themeModeProvider);
+    final current = asyncMode.value ?? ThemeMode.system;
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: context.receipt.divider, width: 2),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          for (final mode in ThemeMode.values)
+            Expanded(
+              child: Material(
+                color: current == mode
+                    ? context.receipt.ink
+                    : Colors.transparent,
+                child: InkWell(
+                  key: ValueKey('theme-${mode.name}'),
+                  onTap: asyncMode.isLoading
+                      ? null
+                      : () async {
+                          ref.read(hapticsProvider).selectionClick();
+                          await ref
+                              .read(themeModeProvider.notifier)
+                              .setMode(mode);
+                        },
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 48),
+                    child: Center(
+                      child: Text(
+                        mode.name.toUpperCase(),
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: current == mode
+                              ? context.receipt.paper
+                              : context.receipt.ink,
+                          fontWeight: current == mode
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          fontSize: 11,
+                          letterSpacing: .7,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _IgnoredMerchantsSheet extends ConsumerWidget {
   const _IgnoredMerchantsSheet();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => SafeArea(
+    top: false,
     child: SizedBox(
-      height: MediaQuery.sizeOf(context).height * .65,
+      height: MediaQuery.sizeOf(context).height * .7,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SectionHeader('IGNORED MERCHANTS'),
+            const SizedBox(height: 12),
             Text(
-              'IGNORED MERCHANTS',
-              style: Theme.of(context).textTheme.dotTitle
-                  .copyWith(fontSize: 25),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'These merchants are skipped during SMS scans. Restore one to allow detection on your next scan.',
+              'RESTORE A MERCHANT TO ALLOW DETECTION ON THE NEXT SMS SCAN.',
               style: TextStyle(
-                fontSize: 11,
-                height: 1.6,
-                color: DuesColors.muted,
+                color: context.receipt.muted,
+                fontSize: 10,
+                height: 1.5,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
             Expanded(
               child: ref
                   .watch(ignoredMerchantsProvider)
@@ -435,55 +401,51 @@ class _IgnoredMerchantsSheet extends ConsumerWidget {
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
                     error: (_, _) => Center(
-                      child: TextButton(
+                      child: ReceiptButton(
+                        label: 'RETRY',
+                        variant: ReceiptButtonVariant.dashed,
                         onPressed: () =>
                             ref.invalidate(ignoredMerchantsProvider),
-                        child: const Text('Could not load merchants. Retry'),
                       ),
                     ),
                     data: (merchants) {
                       if (merchants.isEmpty) {
-                        return const Center(
+                        return Center(
                           child: Text(
                             'No ignored merchants.',
-                            style: TextStyle(color: DuesColors.muted),
+                            style: TextStyle(color: context.receipt.muted),
                           ),
                         );
                       }
                       final sorted = merchants.toList()..sort();
-                      return ListView.separated(
+                      return ListView.builder(
                         itemCount: sorted.length,
-                        separatorBuilder: (_, _) => const Divider(height: 1),
-                        itemBuilder: (context, index) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            sorted[index],
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                          trailing: TextButton(
-                            onPressed: () async {
-                              ref.read(hapticsProvider).selectionClick();
-                              try {
-                                await ref
-                                    .read(repositoryProvider)
-                                    .unignoreMerchant(sorted[index]);
-                              } catch (_) {
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Could not restore merchant. Please try again.',
+                        itemBuilder: (context, index) => Column(
+                          children: [
+                            LeaderLine(
+                              label: sorted[index].toUpperCase(),
+                              amount: 'RESTORE',
+                              onTap: () async {
+                                ref.read(hapticsProvider).selectionClick();
+                                try {
+                                  await ref
+                                      .read(repositoryProvider)
+                                      .unignoreMerchant(sorted[index]);
+                                } catch (_) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'MERCHANT COULD NOT BE RESTORED.',
+                                        ),
                                       ),
-                                    ),
-                                  );
+                                    );
+                                  }
                                 }
-                              }
-                            },
-                            child: const Text(
-                              'RESTORE',
-                              style: TextStyle(fontSize: 10),
+                              },
                             ),
-                          ),
+                            const DashedDivider(height: 1, dash: 2, gap: 4),
+                          ],
                         ),
                       );
                     },
@@ -496,91 +458,37 @@ class _IgnoredMerchantsSheet extends ConsumerWidget {
   );
 }
 
-class _PrivacyCard extends StatelessWidget {
-  const _PrivacyCard();
+class _PrivacyNotice extends StatelessWidget {
+  const _PrivacyNotice();
+
   @override
-  Widget build(BuildContext context) => const DuesCard(
-    color: DuesColors.surfaceRaised,
-    child: Row(
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      border: Border.all(color: context.receipt.divider),
+      borderRadius: BorderRadius.circular(4),
+    ),
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(Icons.lock_outline, color: DuesColors.red, size: 22),
-        SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'STAYS ON THIS DEVICE',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  letterSpacing: .4,
-                ),
-              ),
-              SizedBox(height: 8),
-              Text(
-                'No account. No cloud. No analytics. Your messages and subscription data stay on your phone unless you choose to export them.',
-                style: TextStyle(
-                  color: DuesColors.muted,
-                  height: 1.6,
-                  fontSize: 10,
-                ),
-              ),
-            ],
+        const Text(
+          'STAYS ON THIS DEVICE',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 12,
+            letterSpacing: .8,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'NO ACCOUNT. NO CLOUD. NO ANALYTICS. DATA LEAVES YOUR PHONE ONLY WHEN YOU CHOOSE TO EXPORT IT.',
+          style: TextStyle(
+            color: context.receipt.muted,
+            fontSize: 10,
+            height: 1.5,
           ),
         ),
       ],
-    ),
-  );
-}
-
-class _SettingRow extends StatelessWidget {
-  const _SettingRow({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    this.trailing,
-    this.onTap,
-  });
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: onTap,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
-      child: Row(
-        children: [
-          Icon(icon, size: 19, color: DuesColors.muted),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11,
-                    letterSpacing: .4,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(fontSize: 9, color: DuesColors.muted),
-                ),
-              ],
-            ),
-          ),
-          trailing ?? const SizedBox.shrink(),
-        ],
-      ),
     ),
   );
 }

@@ -32,6 +32,31 @@ lib/
 
 Drift stores subscriptions, parsed debit transactions, ignored merchants, and local settings in `dues.sqlite`. Riverpod exposes database streams to the dashboard and subscription list. Manual and SMS-detected subscriptions share the same domain model and repository.
 
+## Receipt design system
+
+Dues uses one flat, monochrome receipt language in light and dark modes. The
+bundled `IBM Plex Mono` font is loaded from `assets/fonts`; the app never fetches
+fonts at runtime. The color tokens live in `lib/core/theme/app_theme.dart`:
+
+| Token | Light / paper | Dark / night receipt |
+| --- | --- | --- |
+| Background | `#FBFAF6` | `#121212` |
+| Ink | `#111111` | `#F2EFE6` |
+| Muted | `#555555` | `#A09B8F` |
+| Divider | `#111111` | `#F2EFE6` |
+
+System, Light, and Dark modes are available in Config. The choice is saved in
+the existing local settings table and restored before the first app frame;
+System mode continues to follow Android appearance changes live.
+
+When adding a presentation screen, use `ReceiptTokens` through
+`context.receipt`, apply uppercase headings with `receiptHeading` or
+`receiptLabel`, and compose the primitives in
+`presentation/widgets/receipt_widgets.dart`: `DashedDivider`, `LeaderLine`,
+`Stamp`, `ReceiptButton`, and `SectionHeader`. Keep corners at 4 px, borders at
+1–2 px, touch targets at least 44 px, and use inversion—not another color—for
+emphasis. Long merchant names must use a bounded line count and ellipsis.
+
 ## SMS parsing
 
 The native Kotlin channel exposes only three operations: check permission, request permission, and read the inbox. It queries `content://sms/inbox` after permission is granted and returns message ID, sender, body, and timestamp to Dart.

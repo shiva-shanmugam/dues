@@ -6,6 +6,7 @@ import 'package:dues/domain/repositories/subscription_repository.dart';
 import 'package:dues/presentation/pages/settings_page.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/providers/preferences_provider.dart';
+import 'package:dues/presentation/providers/theme_mode_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -18,6 +19,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         appPreferencesProvider.overrideWith(_MemoryPreferences.new),
+        themeModeProvider.overrideWith(_MemoryThemeMode.new),
         repositoryProvider.overrideWithValue(repository),
         smsInboxProvider.overrideWithValue(const _FakeSmsService()),
       ],
@@ -37,17 +39,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    await tester.tap(find.byKey(const ValueKey('theme-dark')));
+    await tester.pumpAndSettle();
+    expect(container.read(themeModeProvider).value, ThemeMode.dark);
+
     await tester.ensureVisible(find.text('CURRENCY'));
     await tester.tap(find.text('CURRENCY'));
     await tester.pumpAndSettle();
     expect(find.text('DEFAULT CURRENCY'), findsOneWidget);
-    await tester.tap(find.text('US dollar (USD)'));
+    await tester.tap(find.text('US DOLLAR'));
     await tester.pumpAndSettle();
     expect(container.read(appPreferencesProvider).value!.currency, 'USD');
-    expect(find.text('US dollar (USD) · totals & new entries'), findsOneWidget);
+    expect(find.text('USD'), findsOneWidget);
 
-    await tester.ensureVisible(find.byKey(const ValueKey('haptic-switch')));
-    await tester.tap(find.byKey(const ValueKey('haptic-switch')));
+    await tester.ensureVisible(find.byKey(const ValueKey('haptic-row')));
+    await tester.tap(find.byKey(const ValueKey('haptic-row')));
     await tester.pumpAndSettle();
     expect(
       container.read(appPreferencesProvider).value!.hapticsEnabled,
@@ -57,7 +63,7 @@ void main() {
     await tester.ensureVisible(find.text('IGNORED MERCHANTS'));
     await tester.tap(find.text('IGNORED MERCHANTS'));
     await tester.pumpAndSettle();
-    expect(find.text('netflix'), findsOneWidget);
+    expect(find.text('NETFLIX'), findsOneWidget);
     await tester.tap(find.text('RESTORE'));
     await tester.pumpAndSettle();
     expect(repository.restored, 'netflix');
@@ -65,6 +71,14 @@ void main() {
     await tester.pumpWidget(const SizedBox());
     await tester.pump();
   });
+}
+
+class _MemoryThemeMode extends ThemeModeController {
+  @override
+  Future<ThemeMode> build() async => ThemeMode.system;
+
+  @override
+  Future<void> setMode(ThemeMode mode) async => state = AsyncData(mode);
 }
 
 class _MemoryPreferences extends AppPreferencesController {

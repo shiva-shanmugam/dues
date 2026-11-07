@@ -1,5 +1,5 @@
 import 'package:dues/core/theme/app_theme.dart';
-import 'package:dues/presentation/widgets/dues_card.dart';
+import 'package:dues/presentation/widgets/receipt_widgets.dart';
 import 'package:flutter/material.dart';
 
 class SmsOnboardingPage extends StatelessWidget {
@@ -13,126 +13,64 @@ class SmsOnboardingPage extends StatelessWidget {
   final bool isLoading;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 28, 24, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) => Scaffold(
+    body: SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+        children: [
+          Row(
             children: [
-              Text('DUES', style: Theme.of(context).textTheme.dotTitle),
-              const Spacer(),
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(26),
-                  border: Border.all(color: DuesColors.outline),
-                ),
-                child: const Icon(
-                  Icons.sms_outlined,
-                  size: 30,
-                  color: DuesColors.red,
+              Expanded(
+                child: Text(
+                  'DUES',
+                  style: Theme.of(context).textTheme.receiptHeading,
                 ),
               ),
-              const SizedBox(height: 28),
-              const Text(
-                'FIND RECURRING\nCHARGES, PRIVATELY.',
+              Text(
+                'PRIVATE STATEMENT',
                 style: TextStyle(
-                  fontFamily: 'Doto',
-                  fontVariations: [FontVariation('wght', 900)],
-                  fontSize: 35,
-                  height: 1.12,
-                ),
-              ),
-              const SizedBox(height: 18),
-              const Text(
-                'Dues reads transaction messages from banks, cards and UPI apps to spot repeating payments. Parsing happens entirely on this device.',
-                style: TextStyle(
-                  color: DuesColors.muted,
-                  fontSize: 11,
-                  height: 1.7,
-                ),
-              ),
-              const SizedBox(height: 24),
-              const DuesCard(
-                child: Column(
-                  children: [
-                    _PrivacyRow(
-                      icon: Icons.lock_outline,
-                      text: 'MESSAGES NEVER LEAVE YOUR PHONE',
-                    ),
-                    Divider(height: 26),
-                    _PrivacyRow(
-                      icon: Icons.cloud_off_outlined,
-                      text: 'NO ACCOUNT, CLOUD OR ANALYTICS',
-                    ),
-                    Divider(height: 26),
-                    _PrivacyRow(
-                      icon: Icons.visibility_off_outlined,
-                      text: 'ONLY TRANSACTION SMS ARE SAVED',
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: FilledButton(
-                  onPressed: isLoading ? null : onContinue,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: DuesColors.red,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                  child: isLoading
-                      ? const SizedBox.square(
-                          dimension: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: DuesColors.offWhite,
-                          ),
-                        )
-                      : const Text(
-                          'CONTINUE TO SMS ACCESS',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: .8,
-                            fontSize: 11,
-                          ),
-                        ),
+                  color: context.receipt.muted,
+                  fontSize: 10,
+                  letterSpacing: .8,
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PrivacyRow extends StatelessWidget {
-  const _PrivacyRow({required this.icon, required this.text});
-  final IconData icon;
-  final String text;
-  @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      Icon(icon, size: 18, color: DuesColors.muted),
-      const SizedBox(width: 13),
-      Expanded(
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 9,
-            letterSpacing: .6,
-            fontWeight: FontWeight.bold,
+          const SizedBox(height: 16),
+          const DashedDivider(),
+          const SizedBox(height: 42),
+          Text(
+            'FIND RECURRING\nCHARGES, PRIVATELY.',
+            style: Theme.of(context).textTheme.receiptHeading
+                .copyWith(fontSize: 30, height: 1.2),
           ),
-        ),
+          const SizedBox(height: 20),
+          Text(
+            'DUES READS TRANSACTION MESSAGES FROM BANKS, CARDS AND UPI APPS TO FIND REPEATING PAYMENTS. PARSING HAPPENS ENTIRELY ON THIS DEVICE.',
+            style: TextStyle(
+              color: context.receipt.muted,
+              fontSize: 12,
+              height: 1.6,
+            ),
+          ),
+          const SizedBox(height: 32),
+          const SectionHeader('SMS ACCESS RECEIPT'),
+          const SizedBox(height: 8),
+          const LeaderLine(label: 'MESSAGES LEAVE PHONE', amount: 'NEVER'),
+          const DashedDivider(height: 1, dash: 2, gap: 4),
+          const LeaderLine(label: 'ACCOUNT / CLOUD', amount: 'NONE'),
+          const DashedDivider(height: 1, dash: 2, gap: 4),
+          const LeaderLine(label: 'ANALYTICS', amount: 'NONE'),
+          const DashedDivider(height: 1, dash: 2, gap: 4),
+          const LeaderLine(label: 'SAVED CONTENT', amount: 'TRANSACTIONS'),
+          const SizedBox(height: 34),
+          ReceiptButton(
+            label: 'CONTINUE TO SMS ACCESS',
+            onPressed: onContinue,
+            busy: isLoading,
+          ),
+        ],
       ),
-    ],
+    ),
   );
 }
