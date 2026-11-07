@@ -1,6 +1,7 @@
 import 'package:dues/presentation/pages/sms_onboarding_page.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/shell/app_shell.dart';
+import 'package:dues/presentation/widgets/receipt_intro.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -53,6 +54,10 @@ class _StartupGateState extends ConsumerState<StartupGate> {
 
   @override
   Widget build(BuildContext context) {
+    return ReceiptIntro(ready: _seenOnboarding != null, child: _content());
+  }
+
+  Widget _content() {
     if (_seenOnboarding == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }

@@ -48,6 +48,18 @@ fonts at runtime. The color tokens live in `lib/core/theme/app_theme.dart`:
 System, Light, and Dark modes are available in Config. The choice is saved in
 the existing local settings table and restored before the first app frame;
 System mode continues to follow Android appearance changes live.
+Tap the theme button beside CONFIG to cycle Dark → Light → System → Dark.
+
+On a fresh launch, a brief receipt-printing intro types DUES and moves the title
+into the statement header. It respects the system's reduced-motion setting and
+does not replay when the app resumes. Subscription details keep headings and
+actions fixed while only the saved SMS history scrolls. Add/edit sheets can be
+dragged down to dismiss without saving.
+
+Ignored merchants open a read-only summary of saved payment history when
+tapped. The separate RESTORE action asks for confirmation before allowing the
+merchant in future scans. If Android blocks renewal notifications, Config offers
+a link to the app's notification settings; re-enable alerts after granting access.
 
 When adding a presentation screen, use `ReceiptTokens` through
 `context.receipt`, apply uppercase headings with `receiptHeading` or

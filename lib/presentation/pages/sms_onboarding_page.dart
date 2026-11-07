@@ -1,5 +1,6 @@
 import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/presentation/widgets/receipt_widgets.dart';
+import 'package:dues/presentation/widgets/receipt_intro.dart';
 import 'package:flutter/material.dart';
 
 class SmsOnboardingPage extends StatelessWidget {
@@ -20,12 +21,7 @@ class SmsOnboardingPage extends StatelessWidget {
         children: [
           Row(
             children: [
-              Expanded(
-                child: Text(
-                  'DUES',
-                  style: Theme.of(context).textTheme.receiptHeading,
-                ),
-              ),
+              const Expanded(child: DuesTitle()),
               Text(
                 'PRIVATE STATEMENT',
                 style: TextStyle(

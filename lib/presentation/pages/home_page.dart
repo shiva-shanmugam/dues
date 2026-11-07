@@ -6,6 +6,7 @@ import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/reminder_sync_provider.dart';
 import 'package:dues/presentation/widgets/receipt_widgets.dart';
+import 'package:dues/presentation/widgets/receipt_intro.dart';
 import 'package:dues/presentation/widgets/subscription_detail_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -150,6 +151,7 @@ class HomePage extends ConsumerWidget {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      enableDrag: false,
       builder: (context) => SubscriptionDetailSheet(subscription: subscription),
     );
   }
@@ -164,15 +166,9 @@ class _StatementHeader extends StatelessWidget {
   Widget build(BuildContext context) => Row(
     crossAxisAlignment: CrossAxisAlignment.end,
     children: [
-      Expanded(
-        child: Text(
-          'DUES',
-          maxLines: 1,
-          style: Theme.of(context).textTheme.receiptHeading,
-        ),
-      ),
+      const Expanded(child: DuesTitle()),
       const SizedBox(width: 12),
-      Flexible(
+      Expanded(
         child: Text(
           '${HomePage._months[now.month - 1]} ${now.year} STATEMENT',
           maxLines: 2,
