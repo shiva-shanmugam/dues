@@ -8,6 +8,7 @@ import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/reminder_sync_provider.dart';
 import 'package:dues/presentation/providers/theme_mode_provider.dart';
 import 'package:dues/presentation/widgets/receipt_widgets.dart';
+import 'package:dues/presentation/widgets/ignored_merchant_summary.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -61,14 +62,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
           sliver: SliverList.list(
             children: [
-              Text('CONFIG', style: Theme.of(context).textTheme.receiptHeading),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'CONFIG',
+                      style: Theme.of(context).textTheme.receiptHeading,
+                    ),
+                  ),
+                  const _ThemeCycleButton(),
+                ],
+              ),
               const SizedBox(height: 16),
               const DashedDivider(),
               const SizedBox(height: 28),
-              const SectionHeader('THEME'),
-              const SizedBox(height: 14),
-              const _ThemeSelector(),
-              const SizedBox(height: 30),
               const SectionHeader('DATA & PERMISSIONS'),
               const SizedBox(height: 4),
               LeaderLine(
@@ -166,7 +173,29 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             .requestPermission()
             .timeout(const Duration(seconds: 30));
         if (!granted) {
-          _message('Allow notifications in Android settings to enable alerts.');
+          if (!mounted) return;
+          final openSettings = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('NOTIFICATIONS BLOCKED'),
+              content: const Text(
+                'Allow Dues notifications in Android settings, then tap renewal alerts again to enable them.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('CANCEL'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text('OPEN SETTINGS'),
+                ),
+              ],
+            ),
+          );
+          if (openSettings == true) {
+            await ref.read(notificationServiceProvider).openSettings();
+          }
           return;
         }
       }
@@ -312,59 +341,53 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 }
 
-class _ThemeSelector extends ConsumerWidget {
-  const _ThemeSelector();
+class _ThemeCycleButton extends ConsumerStatefulWidget {
+  const _ThemeCycleButton();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_ThemeCycleButton> createState() => _ThemeCycleButtonState();
+}
+
+class _ThemeCycleButtonState extends ConsumerState<_ThemeCycleButton> {
+  bool saving = false;
+
+  Future<void> _cycle(ThemeMode current) async {
+    final next = switch (current) {
+      ThemeMode.system => ThemeMode.dark,
+      ThemeMode.dark => ThemeMode.light,
+      ThemeMode.light => ThemeMode.system,
+    };
+    ref.read(hapticsProvider).selectionClick();
+    setState(() => saving = true);
+    try {
+      await ref.read(themeModeProvider.notifier).setMode(next);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('THEME COULD NOT BE SAVED.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final asyncMode = ref.watch(themeModeProvider);
     final current = asyncMode.value ?? ThemeMode.system;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: context.receipt.divider, width: 2),
-        borderRadius: BorderRadius.circular(4),
+    return OutlinedButton(
+      key: const ValueKey('theme-cycle'),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(72, 44),
+        side: BorderSide(color: context.receipt.ink),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        padding: const EdgeInsets.symmetric(horizontal: 10),
       ),
-      child: Row(
-        children: [
-          for (final mode in ThemeMode.values)
-            Expanded(
-              child: Material(
-                color: current == mode
-                    ? context.receipt.ink
-                    : Colors.transparent,
-                child: InkWell(
-                  key: ValueKey('theme-${mode.name}'),
-                  onTap: asyncMode.isLoading
-                      ? null
-                      : () async {
-                          ref.read(hapticsProvider).selectionClick();
-                          await ref
-                              .read(themeModeProvider.notifier)
-                              .setMode(mode);
-                        },
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 48),
-                    child: Center(
-                      child: Text(
-                        mode.name.toUpperCase(),
-                        maxLines: 1,
-                        style: TextStyle(
-                          color: current == mode
-                              ? context.receipt.paper
-                              : context.receipt.ink,
-                          fontWeight: current == mode
-                              ? FontWeight.w600
-                              : FontWeight.w400,
-                          fontSize: 11,
-                          letterSpacing: .7,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+      onPressed: saving || asyncMode.isLoading ? null : () => _cycle(current),
+      child: Text(
+        current.name.toUpperCase(),
+        style: const TextStyle(fontSize: 11, letterSpacing: .7),
       ),
     );
   }
@@ -425,24 +448,28 @@ class _IgnoredMerchantsSheet extends ConsumerWidget {
                             LeaderLine(
                               label: sorted[index].toUpperCase(),
                               amount: 'RESTORE',
-                              onTap: () async {
+                              onTap: () {
                                 ref.read(hapticsProvider).selectionClick();
-                                try {
-                                  await ref
-                                      .read(repositoryProvider)
-                                      .unignoreMerchant(sorted[index]);
-                                } catch (_) {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'MERCHANT COULD NOT BE RESTORED.',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
+                                showDialog<void>(
+                                  context: context,
+                                  builder: (_) => IgnoredMerchantSummary(
+                                    merchant: sorted[index],
+                                  ),
+                                );
                               },
+                              trailing: TextButton(
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.only(left: 12),
+                                  minimumSize: const Size(44, 44),
+                                  alignment: Alignment.centerRight,
+                                ),
+                                onPressed: () =>
+                                    _restore(context, ref, sorted[index]),
+                                child: const Text(
+                                  'RESTORE',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
                             ),
                             const DashedDivider(height: 1, dash: 2, gap: 4),
                           ],
@@ -456,6 +483,43 @@ class _IgnoredMerchantsSheet extends ConsumerWidget {
       ),
     ),
   );
+
+  Future<void> _restore(
+    BuildContext context,
+    WidgetRef ref,
+    String merchant,
+  ) async {
+    ref.read(hapticsProvider).selectionClick();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('RESTORE MERCHANT?'),
+        content: Text(
+          'Allow ${merchant.toUpperCase()} to be detected in future SMS scans? It will stay removed until a scan finds it again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCEL'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('RESTORE'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await ref.read(repositoryProvider).unignoreMerchant(merchant);
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('MERCHANT COULD NOT BE RESTORED.')),
+        );
+      }
+    }
+  }
 }
 
 class _PrivacyNotice extends StatelessWidget {

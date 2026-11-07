@@ -1,7 +1,6 @@
-import 'dart:ui';
-
 import 'package:dues/domain/models/subscription.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
@@ -50,14 +49,20 @@ class NotificationService {
   }
 
   Future<bool> requestPermission() async {
-    await initialize();
-    return await _plugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >()
-            ?.requestNotificationsPermission() ??
-        true;
+    // Permission prompting does not depend on timezone lookup or scheduling
+    // initialization. A failure there must not block re-enabling alerts.
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    if (android == null) return true;
+    if (await android.areNotificationsEnabled() == true) return true;
+    return await android.requestNotificationsPermission() ?? false;
   }
+
+  Future<void> openSettings() =>
+      const MethodChannel('com.duesapp.dues/notifications')
+          .invokeMethod<void>('openSettings');
 
   Future<void> scheduleRenewals(Iterable<Subscription> subscriptions) {
     final generation = ++_generation;
