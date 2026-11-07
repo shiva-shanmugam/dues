@@ -71,14 +71,12 @@ flutter:
   uses-material-design: true
 
   fonts:
-    - family: Doto
+    - family: IBMPlexMono
       fonts:
-        - asset: assets/fonts/Doto.ttf
-    - family: SpaceMono
-      fonts:
-        - asset: assets/fonts/SpaceMono-Regular.ttf
-        - asset: assets/fonts/SpaceMono-Bold.ttf
-          weight: 700
+        - asset: assets/fonts/IBMPlexMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/IBMPlexMono-SemiBold.ttf
+          weight: 600
 
   # To add assets to your application, add an assets section, like this:
   # assets:
