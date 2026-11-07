@@ -7,6 +7,7 @@ import 'package:dues/domain/models/subscription.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/reminder_sync_provider.dart';
+import 'package:dues/presentation/widgets/receipt_widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -178,11 +179,8 @@ class _SubscriptionEditorSheetState
               widget.subscription == null
                   ? 'ADD SUBSCRIPTION'
                   : 'EDIT SUBSCRIPTION',
-              style: const TextStyle(
-                fontFamily: 'Doto',
-                fontVariations: [FontVariation('wght', 800)],
-                fontSize: 25,
-              ),
+              style: Theme.of(context).textTheme.receiptHeading
+                  .copyWith(fontSize: 24),
             ),
             if (widget.subscription == null) ...[
               const SizedBox(height: 20),
@@ -199,10 +197,10 @@ class _SubscriptionEditorSheetState
                 ],
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Choose a service for plan suggestions, or enter any name below.',
                 style: TextStyle(
-                  color: DuesColors.muted,
+                  color: context.receipt.muted,
                   fontSize: 10,
                   height: 1.6,
                 ),
@@ -216,7 +214,7 @@ class _SubscriptionEditorSheetState
               enabled: !saving,
               onChanged: (_) => setState(() => selectedPlanId = null),
               textCapitalization: TextCapitalization.words,
-              decoration: _decoration('Netflix'),
+              decoration: _decoration(context, 'Netflix'),
             ),
             if (service != null) ...[
               const SizedBox(height: 16),
@@ -233,16 +231,16 @@ class _SubscriptionEditorSheetState
                         '${plan.name} · ${formatMoney(plan.amount, plan.currency)} / ${plan.cycle.label.toLowerCase()}',
                       ),
                       labelStyle: const TextStyle(fontSize: 10),
-                      selectedColor: DuesColors.surfaceRaised,
-                      checkmarkColor: DuesColors.red,
+                      selectedColor: context.receipt.ink.withValues(alpha: .08),
+                      checkmarkColor: context.receipt.ink,
                     ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 'India reference prices · checked ${service.checkedOn}. Your bill may differ. Amount and cycle stay editable.',
-                style: const TextStyle(
-                  color: DuesColors.muted,
+                style: TextStyle(
+                  color: context.receipt.muted,
                   fontSize: 9,
                   height: 1.6,
                 ),
@@ -261,15 +259,15 @@ class _SubscriptionEditorSheetState
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
               ],
-              decoration: _decoration('649', prefix: '$currency '),
+              decoration: _decoration(context, '649', prefix: '$currency '),
             ),
             const SizedBox(height: 16),
             const _FieldLabel('CURRENCY'),
             DropdownButtonFormField<String>(
               key: ValueKey('currency-$currency'),
               initialValue: currency,
-              dropdownColor: DuesColors.surfaceRaised,
-              decoration: _decoration(''),
+              dropdownColor: context.receipt.paper,
+              decoration: _decoration(context, ''),
               items: [
                 for (final code in {'INR', 'USD', 'EUR', 'GBP', currency})
                   DropdownMenuItem(value: code, child: Text(code)),
@@ -287,8 +285,8 @@ class _SubscriptionEditorSheetState
             DropdownButtonFormField<BillingCycle>(
               key: ValueKey('cycle-${cycle.name}'),
               initialValue: cycle,
-              dropdownColor: DuesColors.surfaceRaised,
-              decoration: _decoration(''),
+              dropdownColor: context.receipt.paper,
+              decoration: _decoration(context, ''),
               items: [
                 for (final item in BillingCycle.values)
                   DropdownMenuItem(value: item, child: Text(item.label)),
@@ -325,38 +323,18 @@ class _SubscriptionEditorSheetState
                       }
                     },
               child: InputDecorator(
-                decoration: _decoration(''),
+                decoration: _decoration(context, ''),
                 child: Text(
                   '${nextDueDate.day.toString().padLeft(2, '0')}/${nextDueDate.month.toString().padLeft(2, '0')}/${nextDueDate.year}',
                 ),
               ),
             ),
             const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: FilledButton(
-                key: const ValueKey('save-subscription'),
-                onPressed: saving ? null : _save,
-                style: FilledButton.styleFrom(
-                  backgroundColor: DuesColors.red,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-                child: saving
-                    ? const SizedBox.square(
-                        dimension: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Text(
-                        widget.subscription == null ? 'SAVE' : 'UPDATE',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1,
-                        ),
-                      ),
-              ),
+            ReceiptButton(
+              key: const ValueKey('save-subscription'),
+              label: widget.subscription == null ? 'SAVE' : 'UPDATE',
+              onPressed: _save,
+              busy: saving,
             ),
           ],
         ),
@@ -364,24 +342,11 @@ class _SubscriptionEditorSheetState
     );
   }
 
-  InputDecoration _decoration(String hint, {String? prefix}) => InputDecoration(
-    hintText: hint,
-    prefixText: prefix,
-    filled: true,
-    fillColor: DuesColors.surface,
-    border: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: DuesColors.outline),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: DuesColors.outline),
-    ),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(16),
-      borderSide: const BorderSide(color: DuesColors.offWhite),
-    ),
-  );
+  InputDecoration _decoration(
+    BuildContext context,
+    String hint, {
+    String? prefix,
+  }) => InputDecoration(hintText: hint, prefixText: prefix);
 }
 
 class _FieldLabel extends StatelessWidget {
@@ -390,6 +355,6 @@ class _FieldLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: Theme.of(context).textTheme.label),
+    child: Text(text, style: Theme.of(context).textTheme.receiptLabel),
   );
 }

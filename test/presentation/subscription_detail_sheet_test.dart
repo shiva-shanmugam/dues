@@ -46,8 +46,8 @@ void main() {
     await tester.pumpWidget(app(subscription(merchant: 'Netflix'), repository));
     await tester.pumpAndSettle();
 
-    expect(find.text('SOURCE SMS'), findsOneWidget);
-    expect(find.text('VM-HDFCBK'), findsOneWidget);
+    expect(find.textContaining('SOURCE SMS'), findsOneWidget);
+    expect(find.textContaining('VM-HDFCBK'), findsOneWidget);
     expect(
       find.text('INR 649 debited at NETFLIX.COM on 05-11-26. Ref 42.'),
       findsOneWidget,
