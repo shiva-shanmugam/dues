@@ -62,15 +62,19 @@ class SmsImportService {
         if (item.normalizedMerchant != null)
           item.normalizedMerchant!.toLowerCase(): item,
     };
+    final claimedSubscriptionIds = <String>{};
     for (final candidate in candidates) {
-      final current = existingByMerchant[candidate.merchant.toLowerCase()];
+      final current =
+          existingByMerchant[candidate.merchant.toLowerCase()] ??
+          _legacyMetadataMatch(candidate, existing, claimedSubscriptionIds);
+      if (current != null) claimedSubscriptionIds.add(current.id);
       // A manually adjusted subscription remains linked to its source SMS,
       // but its price, cycle and due date are owned by the user.
       if (current != null && !current.isAutoDetected) continue;
       await repository.saveSubscription(
         Subscription(
           id: current?.id ?? 'sms:${_slug(candidate.merchant)}',
-          name: current?.name ?? candidate.merchant,
+          name: candidate.merchant,
           normalizedMerchant: candidate.merchant,
           amount: candidate.amount,
           currency: candidate.currency,
@@ -87,6 +91,30 @@ class SmsImportService {
       transactionsFound: parsed.length,
       subscriptionsFound: candidates.length,
     );
+  }
+
+  Subscription? _legacyMetadataMatch(
+    RecurringCandidate candidate,
+    List<Subscription> existing,
+    Set<String> claimedIds,
+  ) {
+    final candidateKey = candidate.merchant.toLowerCase();
+    final possible = existing.where((item) {
+      if (!item.isAutoDetected || claimedIds.contains(item.id)) return false;
+      final oldKey = (item.normalizedMerchant ?? item.name).toLowerCase();
+      final withoutMetadata = oldKey
+          .replaceFirst(RegExp(r'\s+(?:info|p2[am])(?:\s+p2[am])?$'), '')
+          .trim();
+      final metadataOnly = RegExp(r'^(?:info\s+)?p2[am]$').hasMatch(oldKey);
+      final sameIdentity = withoutMetadata == candidateKey || metadataOnly;
+      final amountClose =
+          (item.amount - candidate.amount).abs() <= candidate.amount * .02;
+      return sameIdentity &&
+          amountClose &&
+          item.currency == candidate.currency &&
+          item.cycle == candidate.cycle;
+    }).toList();
+    return possible.length == 1 ? possible.single : null;
   }
 
   String _slug(String value) => value

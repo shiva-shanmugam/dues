@@ -44,6 +44,22 @@ class SmsTransactionParser {
     caseSensitive: false,
   );
 
+  // INFO is also a legitimate part of business names (e.g. "Info Systems").
+  // Treat it as a field only when marked as such or followed by a rail code.
+  static final _bankDetails = RegExp(
+    r'\bINFO\s*[:=\-]|\bINFO\s+(?=(?:(?:UPI|IMPS)[ /]+)?P2[AM]\b)|\b(?:(?:UPI|IMPS)\s*/\s*)?P2[AM]\s*/',
+    caseSensitive: false,
+  );
+  static final _transferHeader = RegExp(
+    r'^(?:INFO\s*[:=\-]?\s*)?(?:(?:UPI|IMPS)[ /]+)?P2[AM]\b',
+    caseSensitive: false,
+  );
+  static final _transferPayee = RegExp(
+    r'^\s*/\s*\d{6,}\s*/\s*([^/;]+?)(?=\s*/|;|\.(?=\s|$)|$)',
+  );
+
+  static bool hasBankDetails(String body) => _bankDetails.hasMatch(body);
+
   ParsedTransaction? parse(SmsMessage message) {
     final body = message.body.replaceAll(RegExp(r'\s+'), ' ').trim();
     if (body.isEmpty ||
@@ -84,6 +100,8 @@ class SmsTransactionParser {
   }
 
   String? _extractMerchant(String body) {
+    final details = _bankDetails.firstMatch(body);
+    final payment = details == null ? body : body.substring(0, details.start);
     final candidates = [
       RegExp(
         r'\b(?:PAID|SENT)\s+(?:(?:INR|RS\.?|₹)\s*)?[0-9][0-9,.]*\s+TO\s+(.+?)(?=\s+(?:ON|VIA|USING|REF|UPI|TXN|FROM)\b|;|\.(?=\s|$)|$)',
@@ -94,7 +112,7 @@ class SmsTransactionParser {
         caseSensitive: false,
       ),
       RegExp(
-        r'\b(?:PAID|SENT)\s+(?:TO\s+)?(.+?)(?=\s+(?:ON|VIA|USING|REF|UPI REF|TXN|FROM)\b|;|\.(?=\s|$)|$)',
+        r'\b(?:PAID|SENT)\s+(?!FROM\b)(?:TO\s+)?(.+?)(?=\s+(?:ON|VIA|USING|REF|UPI REF|TXN|FROM)\b|;|\.(?=\s|$)|$)',
         caseSensitive: false,
       ),
       RegExp(
@@ -102,7 +120,7 @@ class SmsTransactionParser {
         caseSensitive: false,
       ),
       RegExp(
-        r'\b(?:INFO|MERCHANT)\s*[:\-]\s*(.+?)(?=\s+(?:REF|ON|TXN)\b|;|\.(?=\s|$)|$)',
+        r'\b(?:PAYEE|BENEFICIARY|MERCHANT)(?:\s+NAME)?\s*[:\-]\s*(.+?)(?=\s+(?:REF|ON|TXN)\b|;|\.(?=\s|$)|$)',
         caseSensitive: false,
       ),
       RegExp(
@@ -111,12 +129,37 @@ class SmsTransactionParser {
       ),
     ];
     for (final pattern in candidates) {
-      final value = pattern.firstMatch(body)?.group(1)?.trim();
-      if (value != null && !_looksLikeAccount(value)) {
-        return value;
-      }
+      final value = _payeeName(pattern.firstMatch(payment)?.group(1));
+      if (value != null) return value;
     }
-    return null;
+    if (details == null) return null;
+    final narration = body.substring(details.start);
+    final header = _transferHeader.matchAsPrefix(narration);
+    if (header != null) {
+      // Only the named recipient after a numeric reference can be used.
+      // P2A/P2M and the reference itself do not identify a recipient.
+      final payee = _transferPayee.matchAsPrefix(
+        narration.substring(header.end),
+      );
+      return _payeeName(payee?.group(1));
+    }
+    // Some card providers use a plain "Info: <merchant>" field.
+    final plainInfo = RegExp(
+      r'^INFO\s*[:=\-]\s*(.+?)(?=\s+(?:REF|ON|TXN)\b|;|\.(?=\s|$)|$)',
+      caseSensitive: false,
+    ).firstMatch(narration);
+    return _payeeName(plainInfo?.group(1));
+  }
+
+  String? _payeeName(String? candidate) {
+    if (candidate == null) return null;
+    final name = candidate.trim().replaceFirst(RegExp(r'[\s,;.:|\-]+$'), '');
+    if (name.length < 2 ||
+        !RegExp(r'[a-z]', caseSensitive: false).hasMatch(name) ||
+        _looksLikeAccount(name)) {
+      return null;
+    }
+    return name;
   }
 
   bool _looksLikeAccount(String value) {

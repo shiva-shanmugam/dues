@@ -151,6 +151,46 @@ void main() {
     });
   });
 
+  group('UPI transfer narration', () {
+    test('stops a named payee before an Info P2A field', () {
+      final result = parse(
+        'Rs.500 sent from A/c XX1234 to DEVA REDDY on 08-11-26. '
+        'Info: P2A/634512908771/deva@upi/UPI',
+      );
+
+      expect(result, isNotNull);
+      expect(result!.rawMerchant, 'DEVA REDDY');
+      expect(result.merchant, 'Deva Reddy');
+    });
+
+    test('extracts the payee from a P2A narration after its reference', () {
+      final result = parse(
+        'INR 500 debited from A/c XX1234. '
+        'Info: P2A/634512908771/DEVA REDDY/deva@upi',
+      );
+
+      expect(result, isNotNull);
+      expect(result!.merchant, 'Deva Reddy');
+    });
+
+    test('extracts a P2M business without keeping transfer metadata', () {
+      final result = parse(
+        'INR 275 debited from account XX99 INFO P2M/634512908772/'
+        'GREEN CAFE/merchant@okaxis',
+      );
+
+      expect(result, isNotNull);
+      expect(result!.merchant, 'Green Cafe');
+    });
+
+    test('does not treat an Info field with no named recipient as a payee', () {
+      expect(
+        parse('INR 500 debited from A/c XX1234. Info: P2A/634512908771'),
+        isNull,
+      );
+    });
+  });
+
   group('false positives and edge cases', () {
     final ignored = [
       '123456 is your OTP for HDFC transaction of Rs 649. Do not share it.',

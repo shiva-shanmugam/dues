@@ -45,6 +45,41 @@ void main() {
       );
     },
   );
+
+  test(
+    'rescan repairs an old auto-detected name containing Info P2A',
+    () async {
+      final database = AppDatabase(executor: NativeDatabase.memory());
+      addTearDown(database.close);
+      final repository = DriftSubscriptionRepository(database);
+      await repository.saveSubscription(
+        Subscription(
+          id: 'sms:deva-reddy-info',
+          name: 'Deva Reddy Info',
+          normalizedMerchant: 'Deva Reddy Info',
+          amount: 500,
+          cycle: BillingCycle.monthly,
+          nextDueDate: DateTime(2026, 12, 8),
+          isAutoDetected: true,
+        ),
+      );
+
+      final importer = SmsImportService(
+        inbox: _NarrationInbox(),
+        repository: repository,
+      );
+      await importer.import();
+
+      final repaired = (await repository.getSubscriptions()).single;
+      expect(repaired.id, 'sms:deva-reddy-info');
+      expect(repaired.name, 'Deva Reddy');
+      expect(repaired.normalizedMerchant, 'Deva Reddy');
+      expect(
+        await repository.getRecentTransactionsForMerchant('Deva Reddy'),
+        hasLength(2),
+      );
+    },
+  );
 }
 
 class _Inbox extends SmsInboxService {
@@ -56,6 +91,21 @@ class _Inbox extends SmsInboxService {
         sender: 'HDFC',
         body: 'INR 649 debited at NETFLIX.COM on 05-$month-2026.',
         receivedAt: DateTime(2026, month, 5),
+      ),
+  ];
+}
+
+class _NarrationInbox extends SmsInboxService {
+  @override
+  Future<List<SmsMessage>> readInbox({int limit = 2000}) async => [
+    for (final month in [10, 11])
+      SmsMessage(
+        id: 'deva-$month',
+        sender: 'AXISBK',
+        body:
+            'INR 500 sent from A/c XX1234 to DEVA REDDY on 08-$month-2026. '
+            'Info: P2A/63451290877$month/deva@upi/UPI',
+        receivedAt: DateTime(2026, month, 8),
       ),
   ];
 }
