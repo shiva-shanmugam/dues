@@ -47,6 +47,9 @@ void main() {
     expect(find.textContaining('STATEMENT'), findsOneWidget);
     expect(find.text('TOTAL/MO'), findsOneWidget);
     expect(find.text('NETFLIX'), findsOneWidget);
+    await tester.tap(find.text('NETFLIX'));
+    await tester.pumpAndSettle();
+    expect(find.text('CHARGE HISTORY'), findsNothing);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump();

@@ -7,7 +7,6 @@ import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/reminder_sync_provider.dart';
 import 'package:dues/presentation/widgets/receipt_widgets.dart';
 import 'package:dues/presentation/widgets/receipt_intro.dart';
-import 'package:dues/presentation/widgets/subscription_detail_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -71,7 +70,6 @@ class HomePage extends ConsumerWidget {
                       item.amount,
                       currency: item.currency,
                     ),
-                    onTap: () => _showDetails(context, ref, item),
                   ),
                 const SizedBox(height: 8),
                 const DashedDivider(),
@@ -140,20 +138,6 @@ class HomePage extends ConsumerWidget {
         );
       }
     }
-  }
-
-  void _showDetails(
-    BuildContext context,
-    WidgetRef ref,
-    Subscription subscription,
-  ) {
-    ref.read(hapticsProvider).selectionClick();
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      enableDrag: false,
-      builder: (context) => SubscriptionDetailSheet(subscription: subscription),
-    );
   }
 }
 
