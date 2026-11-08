@@ -20,7 +20,7 @@ Future<bool?> showSubscriptionEditor(
   context: context,
   isScrollControlled: true,
   useSafeArea: true,
-  showDragHandle: true,
+  showDragHandle: false,
   builder: (context) => DraggableScrollableSheet(
     expand: false,
     initialChildSize: .9,
@@ -111,6 +111,104 @@ class _SubscriptionEditorSheetState
       currency = plan.currency;
       currencyChosen = true;
       cycle = plan.cycle;
+    });
+  }
+
+  Future<void> _chooseDate() async {
+    ref.read(hapticsProvider).selectionClick();
+    final today = DateUtils.dateOnly(DateTime.now());
+    final horizon = today.add(const Duration(days: 3650));
+    final tokens = context.receipt;
+    final square = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(4),
+    );
+    final date = await showDatePicker(
+      context: context,
+      initialDate: nextDueDate,
+      firstDate: nextDueDate.isBefore(today) ? nextDueDate : today,
+      lastDate: nextDueDate.isAfter(horizon) ? nextDueDate : horizon,
+      helpText: 'NEXT DUE DATE',
+      cancelText: 'CANCEL',
+      confirmText: 'SET DATE',
+      builder: (context, child) => DatePickerTheme(
+        data: DatePickerThemeData(
+          backgroundColor: tokens.paper,
+          headerBackgroundColor: tokens.paper,
+          headerForegroundColor: tokens.ink,
+          dividerColor: tokens.divider,
+          elevation: 0,
+          shape: square.copyWith(side: BorderSide(color: tokens.divider)),
+          dayShape: WidgetStatePropertyAll(square),
+          yearShape: WidgetStatePropertyAll(square),
+          headerHelpStyle: Theme.of(context).textTheme.receiptLabel,
+        ),
+        child: child!,
+      ),
+    );
+    if (date != null && mounted) setState(() => nextDueDate = date);
+  }
+
+  Future<T?> _chooseValue<T>({
+    required String title,
+    required T current,
+    required Map<T, String> options,
+  }) {
+    ref.read(hapticsProvider).selectionClick();
+    return showDialog<T>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: SectionHeader(title),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: 6,
+            children: [
+              for (final entry in options.entries)
+                _ReceiptOption(
+                  label: entry.value,
+                  selected: entry.key == current,
+                  onPressed: () => Navigator.pop(context, entry.key),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCEL'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _chooseCurrency() async {
+    final code = await _chooseValue(
+      title: 'CURRENCY',
+      current: currency,
+      options: {
+        for (final code in {'INR', 'USD', 'EUR', 'GBP', currency}) code: code,
+      },
+    );
+    if (code == null || !mounted) return;
+    setState(() {
+      currency = code;
+      currencyChosen = true;
+      selectedPlanId = null;
+    });
+  }
+
+  Future<void> _chooseCycle() async {
+    final selected = await _chooseValue(
+      title: 'BILLING CYCLE',
+      current: cycle,
+      options: {for (final item in BillingCycle.values) item: item.label},
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      cycle = selected;
+      selectedPlanId = null;
     });
   }
 
@@ -211,70 +309,63 @@ class _SubscriptionEditorSheetState
             ),
             if (widget.subscription == null) ...[
               const SizedBox(height: 20),
-              const _FieldLabel('POPULAR IN INDIA'),
+              const SectionHeader('POPULAR IN INDIA'),
+              const SizedBox(height: 10),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 children: [
                   for (final item in popularServices)
-                    ActionChip(
-                      label: Text(item.name),
+                    _ReceiptOption(
+                      label: item.name.toUpperCase(),
+                      selected: service == item,
                       onPressed: saving ? null : () => _selectService(item),
                     ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Choose a service for plan suggestions, or enter any name below.',
-                style: TextStyle(
-                  color: context.receipt.muted,
-                  fontSize: 10,
-                  height: 1.6,
-                ),
-              ),
             ],
             const SizedBox(height: 22),
-            const _FieldLabel('NAME'),
             TextField(
               key: const ValueKey('subscription-name'),
               controller: nameController,
               enabled: !saving,
               onChanged: (_) => setState(() => selectedPlanId = null),
               textCapitalization: TextCapitalization.words,
-              decoration: _decoration(context, 'Netflix'),
+              decoration: const InputDecoration(
+                labelText: 'SERVICE NAME',
+                hintText: 'Netflix',
+              ),
             ),
             if (service != null) ...[
               const SizedBox(height: 16),
-              const _FieldLabel('PLAN SUGGESTIONS'),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final plan in service.plans)
-                    ChoiceChip(
-                      selected: selectedPlanId == plan.id,
-                      onSelected: saving ? null : (_) => _selectPlan(plan),
-                      label: Text(
-                        '${plan.name} · ${formatMoney(plan.amount, plan.currency)} / ${plan.cycle.label.toLowerCase()}',
-                      ),
-                      labelStyle: const TextStyle(fontSize: 10),
-                      selectedColor: context.receipt.ink.withValues(alpha: .08),
-                      checkmarkColor: context.receipt.ink,
-                    ),
-                ],
-              ),
+              const SectionHeader('PLAN SUGGESTIONS'),
+              const SizedBox(height: 8),
+              for (final plan in service.plans) ...[
+                _ReceiptOption(
+                  label: plan.name.toUpperCase(),
+                  price:
+                      '${formatReceiptAmount(plan.amount, currency: plan.currency)} / ${switch (plan.cycle) {
+                        BillingCycle.weekly => 'WK',
+                        BillingCycle.monthly => 'MO',
+                        BillingCycle.quarterly => 'QTR',
+                        BillingCycle.yearly => 'YR',
+                      }}',
+                  selected: selectedPlanId == plan.id,
+                  onPressed: saving ? null : () => _selectPlan(plan),
+                ),
+                const SizedBox(height: 4),
+              ],
               const SizedBox(height: 8),
               Text(
-                'India reference prices · checked ${service.checkedOn}. Your bill may differ. Amount and cycle stay editable.',
+                'India prices checked ${service.checkedOn}. You can edit the amount and cycle.',
                 style: TextStyle(
                   color: context.receipt.muted,
-                  fontSize: 9,
+                  fontSize: 12,
                   height: 1.6,
                 ),
               ),
             ],
             const SizedBox(height: 16),
-            const _FieldLabel('AMOUNT'),
             TextField(
               key: const ValueKey('subscription-amount'),
               controller: amountController,
@@ -286,75 +377,30 @@ class _SubscriptionEditorSheetState
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
               ],
-              decoration: _decoration(context, '649', prefix: '$currency '),
-            ),
-            const SizedBox(height: 16),
-            const _FieldLabel('CURRENCY'),
-            DropdownButtonFormField<String>(
-              key: ValueKey('currency-$currency'),
-              initialValue: currency,
-              dropdownColor: context.receipt.paper,
-              decoration: _decoration(context, ''),
-              items: [
-                for (final code in {'INR', 'USD', 'EUR', 'GBP', currency})
-                  DropdownMenuItem(value: code, child: Text(code)),
-              ],
-              onChanged: saving
-                  ? null
-                  : (value) => setState(() {
-                      currency = value ?? currency;
-                      currencyChosen = true;
-                      selectedPlanId = null;
-                    }),
-            ),
-            const SizedBox(height: 16),
-            const _FieldLabel('BILLING CYCLE'),
-            DropdownButtonFormField<BillingCycle>(
-              key: ValueKey('cycle-${cycle.name}'),
-              initialValue: cycle,
-              dropdownColor: context.receipt.paper,
-              decoration: _decoration(context, ''),
-              items: [
-                for (final item in BillingCycle.values)
-                  DropdownMenuItem(value: item, child: Text(item.label)),
-              ],
-              onChanged: saving
-                  ? null
-                  : (value) => setState(() {
-                      cycle = value ?? cycle;
-                      selectedPlanId = null;
-                    }),
-            ),
-            const SizedBox(height: 16),
-            const _FieldLabel('NEXT DUE DATE'),
-            InkWell(
-              onTap: saving
-                  ? null
-                  : () async {
-                      final now = DateTime.now();
-                      final date = await showDatePicker(
-                        context: context,
-                        initialDate: nextDueDate,
-                        firstDate: nextDueDate.isBefore(now)
-                            ? nextDueDate
-                            : DateTime(now.year, now.month, now.day),
-                        lastDate:
-                            nextDueDate.isAfter(
-                              now.add(const Duration(days: 3650)),
-                            )
-                            ? nextDueDate
-                            : now.add(const Duration(days: 3650)),
-                      );
-                      if (date != null && mounted) {
-                        setState(() => nextDueDate = date);
-                      }
-                    },
-              child: InputDecorator(
-                decoration: _decoration(context, ''),
-                child: Text(
-                  '${nextDueDate.day.toString().padLeft(2, '0')}/${nextDueDate.month.toString().padLeft(2, '0')}/${nextDueDate.year}',
-                ),
+              decoration: InputDecoration(
+                labelText: 'AMOUNT',
+                hintText: '0.00',
+                prefixText: '$currency ',
               ),
+            ),
+            const SizedBox(height: 16),
+            const SectionHeader('BILLING DETAILS'),
+            LeaderLine(
+              key: ValueKey('currency-$currency'),
+              label: 'CURRENCY',
+              amount: '[ $currency ]',
+              onTap: saving ? null : _chooseCurrency,
+            ),
+            LeaderLine(
+              key: ValueKey('cycle-${cycle.name}'),
+              label: 'BILLING CYCLE',
+              amount: '[ ${cycle.label} ]',
+              onTap: saving ? null : _chooseCycle,
+            ),
+            LeaderLine(
+              label: 'NEXT DUE',
+              amount: '[ ${formatShortDate(nextDueDate)} ${nextDueDate.year} ]',
+              onTap: saving ? null : _chooseDate,
             ),
             const SizedBox(height: 24),
             ReceiptButton(
@@ -368,20 +414,44 @@ class _SubscriptionEditorSheetState
       ),
     );
   }
-
-  InputDecoration _decoration(
-    BuildContext context,
-    String hint, {
-    String? prefix,
-  }) => InputDecoration(hintText: hint, prefixText: prefix);
 }
 
-class _FieldLabel extends StatelessWidget {
-  const _FieldLabel(this.text);
-  final String text;
+class _ReceiptOption extends StatelessWidget {
+  const _ReceiptOption({
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+    this.price,
+  });
+
+  final String label;
+  final String? price;
+  final bool selected;
+  final VoidCallback? onPressed;
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(text, style: Theme.of(context).textTheme.receiptLabel),
+  Widget build(BuildContext context) => Semantics(
+    selected: selected,
+    child: OutlinedButton(
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(44, 44),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        backgroundColor: selected ? context.receipt.ink : context.receipt.paper,
+        foregroundColor: selected ? context.receipt.paper : context.receipt.ink,
+        side: BorderSide(color: context.receipt.divider),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+        textStyle: Theme.of(context).textTheme.receiptLabel,
+      ),
+      onPressed: onPressed,
+      child: price == null
+          ? Text(label)
+          : Row(
+              children: [
+                Expanded(child: Text(label)),
+                const SizedBox(width: 8),
+                Flexible(child: Text(price!, textAlign: TextAlign.right)),
+              ],
+            ),
+    ),
   );
 }

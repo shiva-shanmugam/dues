@@ -136,15 +136,15 @@ void main() {
     final repository = _Repository();
     final sync = _ReminderSync(repository)..result.complete(true);
     await openEditor(tester, repository, sync);
-    await tester.tap(find.widgetWithText(ActionChip, 'Amazon Prime'));
+    await tester.tap(find.widgetWithText(OutlinedButton, 'AMAZON PRIME'));
     await tester.pumpAndSettle();
-    final annual = find.textContaining('Prime annual');
+    final annual = find.text('PRIME ANNUAL');
     await tester.ensureVisible(annual);
     await tester.tap(annual);
     await tester.pumpAndSettle();
     final amount = find.byKey(const ValueKey('subscription-amount'));
     expect(tester.widget<TextField>(amount).controller!.text, '1499');
-    expect(find.text('YEARLY'), findsOneWidget);
+    expect(find.textContaining('YEARLY'), findsOneWidget);
     await tester.ensureVisible(amount);
     await tester.enterText(amount, '1299');
     await tester.ensureVisible(find.byKey(const ValueKey('save-subscription')));
