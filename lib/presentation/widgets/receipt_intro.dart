@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:ui' show lerpDouble;
 
 import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/presentation/widgets/receipt_widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class ReceiptIntro extends StatefulWidget {
   const ReceiptIntro({required this.child, required this.ready, super.key});
@@ -15,12 +17,17 @@ class ReceiptIntro extends StatefulWidget {
 
 class _ReceiptIntroState extends State<ReceiptIntro>
     with SingleTickerProviderStateMixin {
+  static const _audioChannel = MethodChannel('com.duesapp.dues/receipt_audio');
+
   late final AnimationController controller =
       AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 1800),
       )..addStatusListener((status) {
-        if (status == AnimationStatus.completed && mounted) setState(() {});
+        if (status == AnimationStatus.completed) {
+          unawaited(_stopPrintSound());
+          if (mounted) setState(() {});
+        }
       });
   final titleKey = GlobalKey();
   final stackKey = GlobalKey();
@@ -53,13 +60,35 @@ class _ReceiptIntroState extends State<ReceiptIntro>
       if (MediaQuery.disableAnimationsOf(context)) {
         controller.value = 1;
       } else {
+        unawaited(_playPrintSound());
         controller.forward();
       }
     });
   }
 
+  Future<void> _playPrintSound() async {
+    try {
+      await _audioChannel.invokeMethod<void>('play');
+    } on MissingPluginException {
+      // The intro remains usable on platforms without the Android audio host.
+    } on PlatformException {
+      // Audio is decorative and must never block app startup.
+    }
+  }
+
+  Future<void> _stopPrintSound() async {
+    try {
+      await _audioChannel.invokeMethod<void>('stop');
+    } on MissingPluginException {
+      // The intro remains usable on platforms without the Android audio host.
+    } on PlatformException {
+      // Audio is decorative and must never block app startup.
+    }
+  }
+
   @override
   void dispose() {
+    unawaited(_stopPrintSound());
     controller.dispose();
     super.dispose();
   }

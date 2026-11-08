@@ -6,6 +6,8 @@ import android.content.Intent
 import android.os.Build
 import android.provider.Settings
 import android.net.Uri
+import android.media.AudioAttributes
+import android.media.SoundPool
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -16,6 +18,11 @@ class MainActivity : FlutterActivity() {
     private val channelName = "com.duesapp.dues/sms"
     private val smsPermissionRequest = 9012
     private var permissionResult: MethodChannel.Result? = null
+    private var printSoundPool: SoundPool? = null
+    private var printSoundId = 0
+    private var printStreamId = 0
+    private var printSoundLoaded = false
+    private var playPrintWhenLoaded = false
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -41,6 +48,69 @@ class MainActivity : FlutterActivity() {
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler(::handleSmsCall)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.duesapp.dues/receipt_audio")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "play" -> {
+                        playPrintSound()
+                        result.success(null)
+                    }
+                    "stop" -> {
+                        stopPrintSound()
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    private fun playPrintSound() {
+        if (printSoundPool == null) {
+            val attributes = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_SONIFICATION)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .build()
+            printSoundPool = SoundPool.Builder()
+                .setMaxStreams(1)
+                .setAudioAttributes(attributes)
+                .build()
+                .also { pool ->
+                    pool.setOnLoadCompleteListener { loadedPool, sampleId, status ->
+                        printSoundLoaded = status == 0 && sampleId == printSoundId
+                        if (printSoundLoaded && playPrintWhenLoaded) {
+                            playPrintWhenLoaded = false
+                            printStreamId = loadedPool.play(sampleId, 1f, 1f, 1, 0, 1f)
+                        }
+                    }
+                    printSoundId = pool.load(this, R.raw.receipt_print, 1)
+                }
+        }
+        stopPrintSound()
+        if (printSoundLoaded) {
+            printStreamId = printSoundPool?.play(printSoundId, 1f, 1f, 1, 0, 1f) ?: 0
+        } else {
+            playPrintWhenLoaded = true
+        }
+    }
+
+    private fun stopPrintSound() {
+        playPrintWhenLoaded = false
+        if (printStreamId != 0) {
+            printSoundPool?.stop(printStreamId)
+            printStreamId = 0
+        }
+    }
+
+    override fun onStop() {
+        stopPrintSound()
+        super.onStop()
+    }
+
+    override fun onDestroy() {
+        stopPrintSound()
+        printSoundPool?.release()
+        printSoundPool = null
+        super.onDestroy()
     }
 
     private fun handleSmsCall(call: MethodCall, result: MethodChannel.Result) {

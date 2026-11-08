@@ -51,7 +51,9 @@ System mode continues to follow Android appearance changes live.
 Tap the theme button beside CONFIG to cycle Dark → Light → System → Dark.
 
 On a fresh launch, a brief receipt-printing intro types DUES and moves the title
-into the statement header. It respects the system's reduced-motion setting and
+into the statement header with a short bundled printer sound. Android plays the
+sound locally through the system sonification stream without an added permission
+or network request. The intro respects the system's reduced-motion setting and
 does not replay when the app resumes. Subscription details keep headings and
 actions fixed while only the saved SMS history scrolls. Add/edit sheets can be
 dragged down to dismiss without saving.
@@ -80,6 +82,7 @@ The pure-Dart parser then:
 3. Extracts INR amounts, transaction dates, and merchant phrases following `at`, `to`, `towards`, `for`, and mandate/autopay patterns.
 4. Normalizes aliases such as `NETFLIX.COM` and `Netflix India` to `Netflix`.
 5. Tags free-trial, auto-debit, mandate, and renewal signals.
+6. Separates named UPI recipients from bank narration fields such as `Info: P2A/...` and `P2M/...`; an unambiguous rescan also repairs older auto-detected names that retained those field labels.
 6. Groups normalized merchants by similar amount (within 5%, with bounded tolerance) and infers weekly, monthly, quarterly, or yearly cycles from median intervals.
 
 Recurring interval detection requires at least two matching occurrences. A single explicit auto-debit, mandate, renewal, or trial signal is retained as a monthly candidate until more history is available. Marking an item “Not a subscription” stores its normalized merchant in the ignored table so future scans skip it.
