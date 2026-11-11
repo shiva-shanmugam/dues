@@ -294,6 +294,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         return;
       }
       final result = await ref.read(smsImportServiceProvider).import();
+      ref.invalidate(transactionsProvider);
       final synced = await ref.read(reminderSyncProvider).sync();
       if (mounted) setState(() => smsGranted = true);
       _message(

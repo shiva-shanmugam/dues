@@ -21,6 +21,7 @@ void main() {
   Widget app({ThemeData? theme, double textScale = 1}) => ProviderScope(
     overrides: [
       subscriptionsProvider.overrideWith((ref) => Stream.value([subscription])),
+      transactionsProvider.overrideWith((ref) async => const []),
       smsInboxProvider.overrideWithValue(const _FakeSmsInboxService()),
       appPreferencesProvider.overrideWith(_Preferences.new),
       themeModeProvider.overrideWith(_ThemePreference.new),
@@ -55,6 +56,25 @@ void main() {
     await tester.pump();
   });
 
+  testWidgets('home scroll reaches calendar and local insights', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('LOCAL INSIGHTS'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('COMMITMENT CALENDAR'), findsOneWidget);
+    expect(find.text('LOCAL INSIGHTS'), findsOneWidget);
+    expect(find.text('FIXED / MO'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('bottom navigation opens subscriptions and settings', (
     tester,
   ) async {
@@ -80,6 +100,7 @@ void main() {
           subscriptionsProvider.overrideWith(
             (ref) => Stream.value(const <Subscription>[]),
           ),
+          transactionsProvider.overrideWith((ref) async => const []),
           smsInboxProvider.overrideWithValue(const _FakeSmsInboxService()),
           appPreferencesProvider.overrideWith(_Preferences.new),
           themeModeProvider.overrideWith(_ThemePreference.new),

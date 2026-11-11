@@ -40,3 +40,16 @@ String formatShortDate(DateTime date) {
   ];
   return '${date.day.toString().padLeft(2, '0')} ${months[date.month - 1]}';
 }
+
+String formatLongReceiptDate(DateTime date) {
+  const weekdays = [
+    'MONDAY',
+    'TUESDAY',
+    'WEDNESDAY',
+    'THURSDAY',
+    'FRIDAY',
+    'SATURDAY',
+    'SUNDAY',
+  ];
+  return '${weekdays[date.weekday - 1]} / ${formatShortDate(date)} ${date.year}';
+}

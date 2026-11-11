@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/domain/models/subscription.dart';
+import 'package:dues/domain/services/spending_insights_service.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/reminder_sync_provider.dart';
+import 'package:dues/presentation/widgets/commitment_calendar.dart';
 import 'package:dues/presentation/widgets/receipt_widgets.dart';
 import 'package:dues/presentation/widgets/receipt_intro.dart';
+import 'package:dues/presentation/widgets/spending_insights_section.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -32,6 +35,7 @@ class HomePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final subscriptionsAsync = ref.watch(subscriptionsProvider);
     final subscriptions = subscriptionsAsync.value ?? const <Subscription>[];
+    final transactions = ref.watch(transactionsProvider).value ?? const [];
     final now = ref.watch(clockProvider);
     final active = subscriptions.where((item) => !item.isPaused).toList()
       ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
@@ -42,6 +46,12 @@ class HomePage extends ConsumerWidget {
     final monthly = inCurrency.fold<double>(
       0,
       (sum, item) => sum + item.monthlyEquivalent,
+    );
+    final insights = SpendingInsightsService.calculate(
+      subscriptions: subscriptions,
+      transactions: transactions,
+      now: now,
+      currency: currency,
     );
 
     return CustomScrollView(
@@ -89,6 +99,15 @@ class HomePage extends ConsumerWidget {
                 ],
                 const SizedBox(height: 32),
                 _NextDueStamp(subscription: active.first, now: now),
+                const SizedBox(height: 44),
+                CommitmentCalendar(
+                  subscriptions: subscriptions,
+                  now: now,
+                  onInteraction: () =>
+                      ref.read(hapticsProvider).selectionClick(),
+                ),
+                const SizedBox(height: 44),
+                SpendingInsightsSection(insights: insights, currency: currency),
               ],
               if (subscriptionsAsync.hasError) ...[
                 const SizedBox(height: 24),
@@ -121,6 +140,7 @@ class HomePage extends ConsumerWidget {
         return;
       }
       final result = await ref.read(smsImportServiceProvider).import();
+      ref.invalidate(transactionsProvider);
       unawaited(ref.read(reminderSyncProvider).sync());
       if (messenger.mounted) {
         messenger.showSnackBar(

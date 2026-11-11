@@ -4,6 +4,7 @@ import 'package:dues/data/services/local_settings_service.dart';
 import 'package:dues/data/services/notification_service.dart';
 import 'package:dues/data/services/sms_inbox_service.dart';
 import 'package:dues/domain/models/subscription.dart';
+import 'package:dues/domain/models/transaction_record.dart';
 import 'package:dues/domain/repositories/subscription_repository.dart';
 import 'package:dues/domain/services/sms_import_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -34,6 +35,10 @@ final smsImportServiceProvider = Provider(
 
 final subscriptionsProvider = StreamProvider<List<Subscription>>((ref) {
   return ref.watch(repositoryProvider).watchSubscriptions();
+});
+
+final transactionsProvider = FutureProvider<List<TransactionRecord>>((ref) {
+  return ref.watch(repositoryProvider).getTransactions();
 });
 
 class SelectedTabController extends Notifier<int> {
