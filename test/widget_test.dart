@@ -56,9 +56,22 @@ void main() {
     await tester.pump();
   });
 
-  testWidgets('home scroll reaches calendar and local insights', (
-    tester,
-  ) async {
+  testWidgets('compact header button opens floating calendar', (tester) async {
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('home-calendar-button')), findsOneWidget);
+    expect(find.text('COMMITMENT CALENDAR'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('home-calendar-button')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Dialog), findsOneWidget);
+    expect(find.text('COMMITMENT CALENDAR'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('home scroll reaches local insights', (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
@@ -69,7 +82,6 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('COMMITMENT CALENDAR'), findsOneWidget);
     expect(find.text('LOCAL INSIGHTS'), findsOneWidget);
     expect(find.text('FIXED / MO'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -129,6 +141,15 @@ void main() {
       await tester.pumpWidget(app(theme: theme, textScale: 1.3));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
+
+      await tester.tap(find.byKey(const ValueKey('nav-0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('home-calendar-button')));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.text('×'));
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const ValueKey('nav-1')));
       await tester.pumpAndSettle();

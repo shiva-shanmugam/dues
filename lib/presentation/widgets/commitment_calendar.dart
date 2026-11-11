@@ -10,12 +10,14 @@ class CommitmentCalendar extends StatefulWidget {
     required this.subscriptions,
     required this.now,
     required this.onInteraction,
+    this.onClose,
     super.key,
   });
 
   final List<Subscription> subscriptions;
   final DateTime now;
   final VoidCallback onInteraction;
+  final VoidCallback? onClose;
 
   @override
   State<CommitmentCalendar> createState() => _CommitmentCalendarState();
@@ -73,6 +75,10 @@ class _CommitmentCalendarState extends State<CommitmentCalendar> {
                 letterSpacing: .7,
               ),
             ),
+            if (widget.onClose != null) ...[
+              const SizedBox(width: 10),
+              _CloseButton(onTap: widget.onClose!),
+            ],
           ],
         ),
         const SizedBox(height: 10),
@@ -140,7 +146,9 @@ class _CommitmentCalendarState extends State<CommitmentCalendar> {
               day: day,
               dueCount: due.length,
               isToday: isToday,
-              onTap: due.isEmpty ? null : () => _showDay(date, due),
+              onTap: due.isEmpty
+                  ? null
+                  : (anchorContext) => _showDay(anchorContext, date, due),
             );
           },
         ),
@@ -164,19 +172,79 @@ class _CommitmentCalendarState extends State<CommitmentCalendar> {
     setState(() => _month = DateTime(_month.year, _month.month + offset));
   }
 
-  void _showDay(DateTime date, List<CommitmentOccurrence> due) {
+  void _showDay(
+    BuildContext anchorContext,
+    DateTime date,
+    List<CommitmentOccurrence> due,
+  ) {
     widget.onInteraction();
-    showModalBottomSheet<void>(
+    final anchor = anchorContext.findRenderObject()! as RenderBox;
+    final overlay =
+        Overlay.of(context).context.findRenderObject()! as RenderBox;
+    final topLeft = anchor.localToGlobal(Offset.zero, ancestor: overlay);
+    final bottomRight = anchor.localToGlobal(
+      anchor.size.bottomRight(Offset.zero),
+      ancestor: overlay,
+    );
+    showMenu<void>(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: false,
-      builder: (context) =>
-          _CommitmentDaySheet(date: date, occurrences: due, now: widget.now),
+      elevation: 0,
+      color: context.receipt.paper,
+      surfaceTintColor: Colors.transparent,
+      constraints: const BoxConstraints(minWidth: 260, maxWidth: 330),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(4),
+        side: BorderSide(color: context.receipt.divider, width: 1.5),
+      ),
+      position: RelativeRect.fromRect(
+        Rect.fromPoints(topLeft, bottomRight),
+        Offset.zero & overlay.size,
+      ),
+      items: [
+        PopupMenuItem<void>(
+          enabled: false,
+          padding: const EdgeInsets.all(14),
+          child: _CommitmentBubble(
+            date: date,
+            occurrences: due,
+            now: widget.now,
+          ),
+        ),
+      ],
     );
   }
 
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+class _CloseButton extends StatelessWidget {
+  const _CloseButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Close calendar',
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(3),
+      child: Container(
+        width: 30,
+        height: 30,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(color: context.receipt.divider),
+          borderRadius: BorderRadius.circular(3),
+        ),
+        child: const Text(
+          '×',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+        ),
+      ),
+    ),
+  );
 }
 
 class _MonthButton extends StatelessWidget {
@@ -226,7 +294,7 @@ class _CalendarDay extends StatelessWidget {
   final int day;
   final int dueCount;
   final bool isToday;
-  final VoidCallback? onTap;
+  final ValueChanged<BuildContext>? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -241,7 +309,7 @@ class _CalendarDay extends StatelessWidget {
           color: hasDue ? tokens.ink : Colors.transparent,
           borderRadius: BorderRadius.circular(3),
           child: InkWell(
-            onTap: onTap,
+            onTap: onTap == null ? null : () => onTap!(context),
             borderRadius: BorderRadius.circular(3),
             child: Container(
               decoration: BoxDecoration(
@@ -289,8 +357,8 @@ class _CalendarDay extends StatelessWidget {
   }
 }
 
-class _CommitmentDaySheet extends StatelessWidget {
-  const _CommitmentDaySheet({
+class _CommitmentBubble extends StatelessWidget {
+  const _CommitmentBubble({
     required this.date,
     required this.occurrences,
     required this.now,
@@ -316,66 +384,105 @@ class _CommitmentDaySheet extends StatelessWidget {
       );
     }
 
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Center(
-              child: Container(
-                width: 46,
-                height: 3,
-                color: context.receipt.ink,
+    return DefaultTextStyle(
+      style: TextStyle(color: context.receipt.ink, fontFamily: 'IBMPlexMono'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            formatLongReceiptDate(date),
+            maxLines: 2,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              letterSpacing: .7,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            '$status · ${occurrences.length} DUE',
+            style: TextStyle(
+              color: context.receipt.muted,
+              fontSize: 9,
+              letterSpacing: .5,
+            ),
+          ),
+          const SizedBox(height: 9),
+          const DashedDivider(height: 1, dash: 4, gap: 3),
+          const SizedBox(height: 5),
+          for (final occurrence in occurrences) ...[
+            _BubbleLine(
+              label: occurrence.subscription.name.toUpperCase(),
+              amount: formatReceiptAmount(
+                occurrence.subscription.amount,
+                currency: occurrence.subscription.currency,
               ),
             ),
-            const SizedBox(height: 22),
             Text(
-              formatLongReceiptDate(date),
-              style: Theme.of(context).textTheme.receiptHeading,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '$status · ${occurrences.length} COMMITMENT${occurrences.length == 1 ? '' : 'S'}',
+              '${occurrence.subscription.cycle.label} · '
+              '${occurrence.subscription.isAutoDetected ? 'FROM SMS' : 'MANUAL'}',
               style: TextStyle(
                 color: context.receipt.muted,
-                fontSize: 10,
-                letterSpacing: .6,
+                fontSize: 8,
+                letterSpacing: .3,
               ),
             ),
-            const SizedBox(height: 14),
-            const DashedDivider(),
-            const SizedBox(height: 8),
-            for (final occurrence in occurrences) ...[
-              LeaderLine(
-                label: occurrence.subscription.name.toUpperCase(),
-                amount: formatReceiptAmount(
-                  occurrence.subscription.amount,
-                  currency: occurrence.subscription.currency,
-                ),
-              ),
-              Text(
-                '${occurrence.subscription.cycle.label} · '
-                '${occurrence.subscription.isAutoDetected ? 'DETECTED FROM SMS' : 'ADDED MANUALLY'}',
-                style: TextStyle(
-                  color: context.receipt.muted,
-                  fontSize: 9,
-                  letterSpacing: .4,
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
-            const DashedDivider(),
-            const SizedBox(height: 10),
-            for (final total in totals.entries)
-              LeaderLine(
-                label: 'TOTAL / ${total.key}',
-                amount: formatReceiptAmount(total.value, currency: total.key),
-                labelStyle: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+            const SizedBox(height: 5),
           ],
-        ),
+          const DashedDivider(height: 1, dash: 4, gap: 3),
+          const SizedBox(height: 4),
+          for (final total in totals.entries)
+            _BubbleLine(
+              label: 'TOTAL / ${total.key}',
+              amount: formatReceiptAmount(total.value, currency: total.key),
+              strong: true,
+            ),
+        ],
       ),
     );
   }
+}
+
+class _BubbleLine extends StatelessWidget {
+  const _BubbleLine({
+    required this.label,
+    required this.amount,
+    this.strong = false,
+  });
+
+  final String label;
+  final String amount;
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Row(
+      children: [
+        Expanded(
+          child: Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: context.receipt.ink,
+              fontSize: strong ? 10 : 11,
+              fontWeight: strong ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          amount,
+          textAlign: TextAlign.right,
+          style: TextStyle(
+            color: context.receipt.ink,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    ),
+  );
 }

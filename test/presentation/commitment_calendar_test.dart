@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('tapping a due day opens its receipt details', (tester) async {
+  testWidgets('tapping a due day opens a small anchored receipt bubble', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: DuesTheme.light,
@@ -35,6 +37,7 @@ void main() {
     expect(find.text('SATURDAY / 14 NOV 2026'), findsOneWidget);
     expect(find.text('NETFLIX'), findsOneWidget);
     expect(find.textContaining('MONTHLY'), findsOneWidget);
-    expect(find.textContaining('DETECTED FROM SMS'), findsOneWidget);
+    expect(find.textContaining('FROM SMS'), findsOneWidget);
+    expect(find.byType(PopupMenuItem<void>), findsOneWidget);
   });
 }

@@ -61,7 +61,11 @@ class HomePage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 36),
           sliver: SliverList.list(
             children: [
-              _StatementHeader(now: now),
+              _StatementHeader(
+                now: now,
+                onCalendar: () =>
+                    _showCalendar(context, ref, subscriptions, now),
+              ),
               const SizedBox(height: 16),
               const DashedDivider(),
               if (subscriptionsAsync.isLoading && subscriptions.isEmpty)
@@ -100,13 +104,6 @@ class HomePage extends ConsumerWidget {
                 const SizedBox(height: 32),
                 _NextDueStamp(subscription: active.first, now: now),
                 const SizedBox(height: 44),
-                CommitmentCalendar(
-                  subscriptions: subscriptions,
-                  now: now,
-                  onInteraction: () =>
-                      ref.read(hapticsProvider).selectionClick(),
-                ),
-                const SizedBox(height: 44),
                 SpendingInsightsSection(insights: insights, currency: currency),
               ],
               if (subscriptionsAsync.hasError) ...[
@@ -120,6 +117,34 @@ class HomePage extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  void _showCalendar(
+    BuildContext context,
+    WidgetRef ref,
+    List<Subscription> subscriptions,
+    DateTime now,
+  ) {
+    ref.read(hapticsProvider).selectionClick();
+    showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: .58),
+      builder: (dialogContext) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 430),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(18),
+            child: CommitmentCalendar(
+              subscriptions: subscriptions,
+              now: now,
+              onInteraction: () => ref.read(hapticsProvider).selectionClick(),
+              onClose: () => Navigator.of(dialogContext).pop(),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -162,9 +187,10 @@ class HomePage extends ConsumerWidget {
 }
 
 class _StatementHeader extends StatelessWidget {
-  const _StatementHeader({required this.now});
+  const _StatementHeader({required this.now, required this.onCalendar});
 
   final DateTime now;
+  final VoidCallback onCalendar;
 
   @override
   Widget build(BuildContext context) => Row(
@@ -172,7 +198,7 @@ class _StatementHeader extends StatelessWidget {
     children: [
       const Expanded(child: DuesTitle()),
       const SizedBox(width: 12),
-      Expanded(
+      Flexible(
         child: Text(
           '${HomePage._months[now.month - 1]} ${now.year} STATEMENT',
           maxLines: 2,
@@ -186,7 +212,77 @@ class _StatementHeader extends StatelessWidget {
           ),
         ),
       ),
+      const SizedBox(width: 10),
+      _CalendarNoteButton(now: now, onTap: onCalendar),
     ],
+  );
+}
+
+class _CalendarNoteButton extends StatelessWidget {
+  const _CalendarNoteButton({required this.now, required this.onTap});
+
+  final DateTime now;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Open commitment calendar',
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        key: const ValueKey('home-calendar-button'),
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(4),
+        child: Container(
+          width: 42,
+          height: 44,
+          decoration: BoxDecoration(
+            border: Border.all(color: context.receipt.divider),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Column(
+            children: [
+              SizedBox(
+                height: 9,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: Container(height: 1, color: context.receipt.ink),
+                    ),
+                    for (final left in [10.0, 27.0])
+                      Positioned(
+                        left: left,
+                        top: -3,
+                        child: Container(
+                          width: 3,
+                          height: 7,
+                          color: context.receipt.ink,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Text(
+                    now.day.toString().padLeft(2, '0'),
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
   );
 }
 
