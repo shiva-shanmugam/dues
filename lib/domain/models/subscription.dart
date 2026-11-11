@@ -9,6 +9,19 @@ enum BillingCycle {
   final int days;
 }
 
+enum CommitmentCategory {
+  subscription('SUBSCRIPTION'),
+  rent('RENT'),
+  emi('EMI'),
+  tuition('TUITION'),
+  personOrBusiness('PERSON / BUSINESS'),
+  household('HOUSEHOLD'),
+  other('OTHER');
+
+  const CommitmentCategory(this.label);
+  final String label;
+}
+
 class Subscription {
   const Subscription({
     required this.id,
@@ -20,6 +33,7 @@ class Subscription {
     this.normalizedMerchant,
     this.isPaused = false,
     this.isAutoDetected = true,
+    this.category = CommitmentCategory.subscription,
   });
 
   final String id;
@@ -31,6 +45,7 @@ class Subscription {
   final String? normalizedMerchant;
   final bool isPaused;
   final bool isAutoDetected;
+  final CommitmentCategory category;
 
   int daysRemainingFrom(DateTime now) {
     final today = DateTime(now.year, now.month, now.day);
@@ -54,6 +69,7 @@ class Subscription {
     String? normalizedMerchant,
     bool? isPaused,
     bool? isAutoDetected,
+    CommitmentCategory? category,
   }) => Subscription(
     id: id,
     name: name ?? this.name,
@@ -64,5 +80,6 @@ class Subscription {
     normalizedMerchant: normalizedMerchant ?? this.normalizedMerchant,
     isPaused: isPaused ?? this.isPaused,
     isAutoDetected: isAutoDetected ?? this.isAutoDetected,
+    category: category ?? this.category,
   );
 }

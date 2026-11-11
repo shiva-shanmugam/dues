@@ -1,6 +1,8 @@
 import 'package:dues/domain/models/subscription.dart';
 import 'package:dues/domain/models/transaction_record.dart';
 import 'package:dues/domain/repositories/subscription_repository.dart';
+import 'package:dues/domain/repositories/review_repository.dart';
+import 'package:dues/domain/models/review_candidate.dart';
 import 'package:dues/parser/recurrence_detector.dart';
 import 'package:dues/parser/models/parsed_transaction.dart';
 import 'package:dues/parser/sms_transaction_parser.dart';
@@ -21,12 +23,14 @@ class SmsImportService {
   SmsImportService({
     required this.inbox,
     required this.repository,
+    required this.reviewRepository,
     this.parser = const SmsTransactionParser(),
     this.detector = const RecurrenceDetector(),
   });
 
   final SmsInboxService inbox;
   final SubscriptionRepository repository;
+  final ReviewRepository reviewRepository;
   final SmsTransactionParser parser;
   final RecurrenceDetector detector;
 
@@ -71,17 +75,33 @@ class SmsImportService {
       // A manually adjusted subscription remains linked to its source SMS,
       // but its price, cycle and due date are owned by the user.
       if (current != null && !current.isAutoDetected) continue;
+      if (current == null) {
+        await reviewRepository.saveCandidate(
+          ReviewCandidate(
+            id: 'review:${_slug(candidate.merchant)}:${candidate.cycle.name}',
+            merchant: candidate.merchant,
+            amount: candidate.amount,
+            currency: candidate.currency,
+            cycle: candidate.cycle,
+            nextDueDate: _futureDate(candidate.nextDueDate, candidate.cycle),
+            occurrences: candidate.occurrences,
+            signal: candidate.signal?.name,
+          ),
+        );
+        continue;
+      }
       await repository.saveSubscription(
         Subscription(
-          id: current?.id ?? 'sms:${_slug(candidate.merchant)}',
+          id: current.id,
           name: candidate.merchant,
           normalizedMerchant: candidate.merchant,
           amount: candidate.amount,
           currency: candidate.currency,
           cycle: candidate.cycle,
           nextDueDate: _futureDate(candidate.nextDueDate, candidate.cycle),
-          isPaused: current?.isPaused ?? false,
+          isPaused: current.isPaused,
           isAutoDetected: true,
+          category: current.category,
         ),
       );
     }

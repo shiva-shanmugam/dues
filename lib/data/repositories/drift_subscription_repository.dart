@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:dues/data/database/app_database.dart';
 import 'package:dues/domain/models/subscription.dart' as domain;
 import 'package:dues/domain/models/transaction_record.dart' as domain;
+import 'package:dues/domain/models/change_event.dart' as domain;
 import 'package:dues/domain/repositories/subscription_repository.dart';
 
 class DriftSubscriptionRepository implements SubscriptionRepository {
@@ -25,8 +26,11 @@ class DriftSubscriptionRepository implements SubscriptionRepository {
   }
 
   @override
-  Future<void> saveSubscription(domain.Subscription subscription) {
-    return database
+  Future<void> saveSubscription(domain.Subscription subscription) async {
+    final previous = await (database.select(
+      database.subscriptions,
+    )..where((row) => row.id.equals(subscription.id))).getSingleOrNull();
+    await database
         .into(database.subscriptions)
         .insertOnConflictUpdate(
           SubscriptionsCompanion.insert(
@@ -39,20 +43,48 @@ class DriftSubscriptionRepository implements SubscriptionRepository {
             nextDueDate: subscription.nextDueDate,
             isPaused: Value(subscription.isPaused),
             isAutoDetected: Value(subscription.isAutoDetected),
+            category: Value(subscription.category.name),
             updatedAt: Value(DateTime.now()),
           ),
         );
+    if (previous == null) {
+      await _recordEvent(
+        subscription: subscription,
+        type: domain.ChangeEventType.added,
+        afterAmount: subscription.amount,
+      );
+    } else if ((previous.amount - subscription.amount).abs() > .005) {
+      await _recordEvent(
+        subscription: subscription,
+        type: domain.ChangeEventType.priceChanged,
+        beforeAmount: previous.amount,
+        afterAmount: subscription.amount,
+      );
+    }
   }
 
   @override
   Future<void> deleteSubscription(String id) async {
+    final previous = await (database.select(
+      database.subscriptions,
+    )..where((row) => row.id.equals(id))).getSingleOrNull();
     await (database.delete(
       database.subscriptions,
     )..where((row) => row.id.equals(id))).go();
+    if (previous != null) {
+      await _recordEvent(
+        subscription: _subscriptionFromRow(previous),
+        type: domain.ChangeEventType.deleted,
+        beforeAmount: previous.amount,
+      );
+    }
   }
 
   @override
   Future<void> setPaused(String id, {required bool paused}) async {
+    final previous = await (database.select(
+      database.subscriptions,
+    )..where((row) => row.id.equals(id))).getSingleOrNull();
     await (database.update(
       database.subscriptions,
     )..where((row) => row.id.equals(id))).write(
@@ -61,6 +93,16 @@ class DriftSubscriptionRepository implements SubscriptionRepository {
         updatedAt: Value(DateTime.now()),
       ),
     );
+    if (previous != null && previous.isPaused != paused) {
+      await _recordEvent(
+        subscription: _subscriptionFromRow(previous),
+        type: paused
+            ? domain.ChangeEventType.paused
+            : domain.ChangeEventType.resumed,
+        beforeAmount: previous.amount,
+        afterAmount: previous.amount,
+      );
+    }
   }
 
   @override
@@ -170,6 +212,26 @@ class DriftSubscriptionRepository implements SubscriptionRepository {
       nextDueDate: row.nextDueDate,
       isPaused: row.isPaused,
       isAutoDetected: row.isAutoDetected,
+      category: domain.CommitmentCategory.values.byName(row.category),
     );
   }
+
+  Future<void> _recordEvent({
+    required domain.Subscription subscription,
+    required domain.ChangeEventType type,
+    double? beforeAmount,
+    double? afterAmount,
+  }) => database
+      .into(database.changeEvents)
+      .insert(
+        ChangeEventsCompanion.insert(
+          id: '${DateTime.now().microsecondsSinceEpoch}:${type.name}:${subscription.id}',
+          subscriptionId: Value(subscription.id),
+          merchant: subscription.name,
+          type: type.name,
+          beforeAmount: Value(beforeAmount),
+          afterAmount: Value(afterAmount),
+          currency: Value(subscription.currency),
+        ),
+      );
 }

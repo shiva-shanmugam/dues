@@ -298,7 +298,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       final synced = await ref.read(reminderSyncProvider).sync();
       if (mounted) setState(() => smsGranted = true);
       _message(
-        'Scanned ${result.messagesRead} messages / found ${result.subscriptionsFound}.${synced ? '' : ' Reminder scheduling will retry.'}',
+        'Scanned ${result.messagesRead} messages / found ${result.subscriptionsFound} recurring patterns. Check the review inbox.${synced ? '' : ' Reminder scheduling will retry.'}',
       );
     } catch (_) {
       _message('Could not finish scanning messages. Please try again.');

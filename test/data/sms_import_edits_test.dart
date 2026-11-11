@@ -1,6 +1,7 @@
 import 'package:drift/native.dart';
 import 'package:dues/data/database/app_database.dart' hide Subscription;
 import 'package:dues/data/repositories/drift_subscription_repository.dart';
+import 'package:dues/data/repositories/drift_review_repository.dart';
 import 'package:dues/data/services/sms_inbox_service.dart';
 import 'package:dues/domain/models/subscription.dart';
 import 'package:dues/domain/services/sms_import_service.dart';
@@ -14,11 +15,26 @@ void main() {
       final database = AppDatabase(executor: NativeDatabase.memory());
       addTearDown(database.close);
       final repository = DriftSubscriptionRepository(database);
+      final reviews = DriftReviewRepository(database);
       final importer = SmsImportService(
         inbox: _Inbox(),
         repository: repository,
+        reviewRepository: reviews,
       );
       await importer.import();
+      final pending = (await reviews.getCandidates()).single;
+      await repository.saveSubscription(
+        Subscription(
+          id: 'sms:netflix',
+          name: pending.merchant,
+          normalizedMerchant: pending.merchant,
+          amount: pending.amount,
+          currency: pending.currency,
+          cycle: pending.cycle,
+          nextDueDate: pending.nextDueDate,
+        ),
+      );
+      await reviews.removeCandidate(pending.id);
       final original = (await repository.getSubscriptions()).single;
       await repository.saveSubscription(
         original.copyWith(
@@ -52,6 +68,7 @@ void main() {
       final database = AppDatabase(executor: NativeDatabase.memory());
       addTearDown(database.close);
       final repository = DriftSubscriptionRepository(database);
+      final reviews = DriftReviewRepository(database);
       await repository.saveSubscription(
         Subscription(
           id: 'sms:deva-reddy-info',
@@ -67,6 +84,7 @@ void main() {
       final importer = SmsImportService(
         inbox: _NarrationInbox(),
         repository: repository,
+        reviewRepository: reviews,
       );
       await importer.import();
 

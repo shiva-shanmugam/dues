@@ -1,11 +1,16 @@
-import 'package:dues/data/database/app_database.dart' hide Subscription;
+import 'package:dues/data/database/app_database.dart'
+    hide Subscription, ReviewCandidate, ChangeEvent;
 import 'package:dues/data/repositories/drift_subscription_repository.dart';
+import 'package:dues/data/repositories/drift_review_repository.dart';
 import 'package:dues/data/services/local_settings_service.dart';
 import 'package:dues/data/services/notification_service.dart';
 import 'package:dues/data/services/sms_inbox_service.dart';
 import 'package:dues/domain/models/subscription.dart';
 import 'package:dues/domain/models/transaction_record.dart';
 import 'package:dues/domain/repositories/subscription_repository.dart';
+import 'package:dues/domain/repositories/review_repository.dart';
+import 'package:dues/domain/models/review_candidate.dart';
+import 'package:dues/domain/models/change_event.dart';
 import 'package:dues/domain/services/sms_import_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,6 +26,10 @@ final repositoryProvider = Provider<SubscriptionRepository>((ref) {
   return DriftSubscriptionRepository(ref.watch(databaseProvider));
 });
 
+final reviewRepositoryProvider = Provider<ReviewRepository>((ref) {
+  return DriftReviewRepository(ref.watch(databaseProvider));
+});
+
 final localSettingsProvider = Provider(
   (ref) => LocalSettingsService(ref.watch(databaseProvider)),
 );
@@ -30,6 +39,7 @@ final smsImportServiceProvider = Provider(
   (ref) => SmsImportService(
     inbox: ref.watch(smsInboxProvider),
     repository: ref.watch(repositoryProvider),
+    reviewRepository: ref.watch(reviewRepositoryProvider),
   ),
 );
 
@@ -39,6 +49,14 @@ final subscriptionsProvider = StreamProvider<List<Subscription>>((ref) {
 
 final transactionsProvider = FutureProvider<List<TransactionRecord>>((ref) {
   return ref.watch(repositoryProvider).getTransactions();
+});
+
+final reviewCandidatesProvider = StreamProvider<List<ReviewCandidate>>((ref) {
+  return ref.watch(reviewRepositoryProvider).watchCandidates();
+});
+
+final changeEventsProvider = StreamProvider<List<ChangeEvent>>((ref) {
+  return ref.watch(reviewRepositoryProvider).watchChangeEvents();
 });
 
 class SelectedTabController extends Notifier<int> {

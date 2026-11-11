@@ -189,7 +189,7 @@ class _SubscriptionDetailSheetState
               ),
               const SizedBox(height: 6),
               Text(
-                '${subscription.isAutoDetected ? 'DETECTED FROM SMS' : 'SAVED LOCALLY'} · NEXT ${formatShortDate(subscription.nextDueDate)}',
+                '${subscription.isAutoDetected ? 'DETECTED FROM SMS' : 'SAVED LOCALLY'} · ${subscription.category.label} · NEXT ${formatShortDate(subscription.nextDueDate)}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(

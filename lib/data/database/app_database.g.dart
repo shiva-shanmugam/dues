@@ -109,6 +109,18 @@ class $SubscriptionsTable extends Subscriptions
     ),
     defaultValue: const Constant(true),
   );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('subscription'),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -144,6 +156,7 @@ class $SubscriptionsTable extends Subscriptions
     nextDueDate,
     isPaused,
     isAutoDetected,
+    category,
     createdAt,
     updatedAt,
   ];
@@ -229,6 +242,12 @@ class $SubscriptionsTable extends Subscriptions
         ),
       );
     }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -286,6 +305,10 @@ class $SubscriptionsTable extends Subscriptions
         DriftSqlType.bool,
         data['${effectivePrefix}is_auto_detected'],
       )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -313,6 +336,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
   final DateTime nextDueDate;
   final bool isPaused;
   final bool isAutoDetected;
+  final String category;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Subscription({
@@ -325,6 +349,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
     required this.nextDueDate,
     required this.isPaused,
     required this.isAutoDetected,
+    required this.category,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -342,6 +367,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
     map['next_due_date'] = Variable<DateTime>(nextDueDate);
     map['is_paused'] = Variable<bool>(isPaused);
     map['is_auto_detected'] = Variable<bool>(isAutoDetected);
+    map['category'] = Variable<String>(category);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -360,6 +386,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
       nextDueDate: Value(nextDueDate),
       isPaused: Value(isPaused),
       isAutoDetected: Value(isAutoDetected),
+      category: Value(category),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -382,6 +409,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
       nextDueDate: serializer.fromJson<DateTime>(json['nextDueDate']),
       isPaused: serializer.fromJson<bool>(json['isPaused']),
       isAutoDetected: serializer.fromJson<bool>(json['isAutoDetected']),
+      category: serializer.fromJson<String>(json['category']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -399,6 +427,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
       'nextDueDate': serializer.toJson<DateTime>(nextDueDate),
       'isPaused': serializer.toJson<bool>(isPaused),
       'isAutoDetected': serializer.toJson<bool>(isAutoDetected),
+      'category': serializer.toJson<String>(category),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -414,6 +443,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
     DateTime? nextDueDate,
     bool? isPaused,
     bool? isAutoDetected,
+    String? category,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Subscription(
@@ -428,6 +458,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
     nextDueDate: nextDueDate ?? this.nextDueDate,
     isPaused: isPaused ?? this.isPaused,
     isAutoDetected: isAutoDetected ?? this.isAutoDetected,
+    category: category ?? this.category,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -448,6 +479,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
       isAutoDetected: data.isAutoDetected.present
           ? data.isAutoDetected.value
           : this.isAutoDetected,
+      category: data.category.present ? data.category.value : this.category,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -465,6 +497,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
           ..write('nextDueDate: $nextDueDate, ')
           ..write('isPaused: $isPaused, ')
           ..write('isAutoDetected: $isAutoDetected, ')
+          ..write('category: $category, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -482,6 +515,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
     nextDueDate,
     isPaused,
     isAutoDetected,
+    category,
     createdAt,
     updatedAt,
   );
@@ -498,6 +532,7 @@ class Subscription extends DataClass implements Insertable<Subscription> {
           other.nextDueDate == this.nextDueDate &&
           other.isPaused == this.isPaused &&
           other.isAutoDetected == this.isAutoDetected &&
+          other.category == this.category &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -512,6 +547,7 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
   final Value<DateTime> nextDueDate;
   final Value<bool> isPaused;
   final Value<bool> isAutoDetected;
+  final Value<String> category;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -525,6 +561,7 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
     this.nextDueDate = const Value.absent(),
     this.isPaused = const Value.absent(),
     this.isAutoDetected = const Value.absent(),
+    this.category = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -539,6 +576,7 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
     required DateTime nextDueDate,
     this.isPaused = const Value.absent(),
     this.isAutoDetected = const Value.absent(),
+    this.category = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -557,6 +595,7 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
     Expression<DateTime>? nextDueDate,
     Expression<bool>? isPaused,
     Expression<bool>? isAutoDetected,
+    Expression<String>? category,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -571,6 +610,7 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
       if (nextDueDate != null) 'next_due_date': nextDueDate,
       if (isPaused != null) 'is_paused': isPaused,
       if (isAutoDetected != null) 'is_auto_detected': isAutoDetected,
+      if (category != null) 'category': category,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -587,6 +627,7 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
     Value<DateTime>? nextDueDate,
     Value<bool>? isPaused,
     Value<bool>? isAutoDetected,
+    Value<String>? category,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -601,6 +642,7 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
       nextDueDate: nextDueDate ?? this.nextDueDate,
       isPaused: isPaused ?? this.isPaused,
       isAutoDetected: isAutoDetected ?? this.isAutoDetected,
+      category: category ?? this.category,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -637,6 +679,9 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
     if (isAutoDetected.present) {
       map['is_auto_detected'] = Variable<bool>(isAutoDetected.value);
     }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -661,6 +706,7 @@ class SubscriptionsCompanion extends UpdateCompanion<Subscription> {
           ..write('nextDueDate: $nextDueDate, ')
           ..write('isPaused: $isPaused, ')
           ..write('isAutoDetected: $isAutoDetected, ')
+          ..write('category: $category, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -1649,6 +1695,1141 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   }
 }
 
+class $ReviewCandidatesTable extends ReviewCandidates
+    with TableInfo<$ReviewCandidatesTable, ReviewCandidate> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ReviewCandidatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _merchantMeta = const VerificationMeta(
+    'merchant',
+  );
+  @override
+  late final GeneratedColumn<String> merchant = GeneratedColumn<String>(
+    'merchant',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _amountMeta = const VerificationMeta('amount');
+  @override
+  late final GeneratedColumn<double> amount = GeneratedColumn<double>(
+    'amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('INR'),
+  );
+  static const VerificationMeta _cycleMeta = const VerificationMeta('cycle');
+  @override
+  late final GeneratedColumn<String> cycle = GeneratedColumn<String>(
+    'cycle',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nextDueDateMeta = const VerificationMeta(
+    'nextDueDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> nextDueDate = GeneratedColumn<DateTime>(
+    'next_due_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _occurrencesMeta = const VerificationMeta(
+    'occurrences',
+  );
+  @override
+  late final GeneratedColumn<int> occurrences = GeneratedColumn<int>(
+    'occurrences',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _signalMeta = const VerificationMeta('signal');
+  @override
+  late final GeneratedColumn<String> signal = GeneratedColumn<String>(
+    'signal',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _firstSeenMeta = const VerificationMeta(
+    'firstSeen',
+  );
+  @override
+  late final GeneratedColumn<DateTime> firstSeen = GeneratedColumn<DateTime>(
+    'first_seen',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    merchant,
+    amount,
+    currency,
+    cycle,
+    nextDueDate,
+    occurrences,
+    signal,
+    firstSeen,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'review_candidates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ReviewCandidate> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('merchant')) {
+      context.handle(
+        _merchantMeta,
+        merchant.isAcceptableOrUnknown(data['merchant']!, _merchantMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_merchantMeta);
+    }
+    if (data.containsKey('amount')) {
+      context.handle(
+        _amountMeta,
+        amount.isAcceptableOrUnknown(data['amount']!, _amountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_amountMeta);
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
+    if (data.containsKey('cycle')) {
+      context.handle(
+        _cycleMeta,
+        cycle.isAcceptableOrUnknown(data['cycle']!, _cycleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_cycleMeta);
+    }
+    if (data.containsKey('next_due_date')) {
+      context.handle(
+        _nextDueDateMeta,
+        nextDueDate.isAcceptableOrUnknown(
+          data['next_due_date']!,
+          _nextDueDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_nextDueDateMeta);
+    }
+    if (data.containsKey('occurrences')) {
+      context.handle(
+        _occurrencesMeta,
+        occurrences.isAcceptableOrUnknown(
+          data['occurrences']!,
+          _occurrencesMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_occurrencesMeta);
+    }
+    if (data.containsKey('signal')) {
+      context.handle(
+        _signalMeta,
+        signal.isAcceptableOrUnknown(data['signal']!, _signalMeta),
+      );
+    }
+    if (data.containsKey('first_seen')) {
+      context.handle(
+        _firstSeenMeta,
+        firstSeen.isAcceptableOrUnknown(data['first_seen']!, _firstSeenMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ReviewCandidate map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ReviewCandidate(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      merchant: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}merchant'],
+      )!,
+      amount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount'],
+      )!,
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      )!,
+      cycle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cycle'],
+      )!,
+      nextDueDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}next_due_date'],
+      )!,
+      occurrences: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}occurrences'],
+      )!,
+      signal: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}signal'],
+      ),
+      firstSeen: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}first_seen'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ReviewCandidatesTable createAlias(String alias) {
+    return $ReviewCandidatesTable(attachedDatabase, alias);
+  }
+}
+
+class ReviewCandidate extends DataClass implements Insertable<ReviewCandidate> {
+  final String id;
+  final String merchant;
+  final double amount;
+  final String currency;
+  final String cycle;
+  final DateTime nextDueDate;
+  final int occurrences;
+  final String? signal;
+  final DateTime firstSeen;
+  final DateTime updatedAt;
+  const ReviewCandidate({
+    required this.id,
+    required this.merchant,
+    required this.amount,
+    required this.currency,
+    required this.cycle,
+    required this.nextDueDate,
+    required this.occurrences,
+    this.signal,
+    required this.firstSeen,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['merchant'] = Variable<String>(merchant);
+    map['amount'] = Variable<double>(amount);
+    map['currency'] = Variable<String>(currency);
+    map['cycle'] = Variable<String>(cycle);
+    map['next_due_date'] = Variable<DateTime>(nextDueDate);
+    map['occurrences'] = Variable<int>(occurrences);
+    if (!nullToAbsent || signal != null) {
+      map['signal'] = Variable<String>(signal);
+    }
+    map['first_seen'] = Variable<DateTime>(firstSeen);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  ReviewCandidatesCompanion toCompanion(bool nullToAbsent) {
+    return ReviewCandidatesCompanion(
+      id: Value(id),
+      merchant: Value(merchant),
+      amount: Value(amount),
+      currency: Value(currency),
+      cycle: Value(cycle),
+      nextDueDate: Value(nextDueDate),
+      occurrences: Value(occurrences),
+      signal: signal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(signal),
+      firstSeen: Value(firstSeen),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ReviewCandidate.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ReviewCandidate(
+      id: serializer.fromJson<String>(json['id']),
+      merchant: serializer.fromJson<String>(json['merchant']),
+      amount: serializer.fromJson<double>(json['amount']),
+      currency: serializer.fromJson<String>(json['currency']),
+      cycle: serializer.fromJson<String>(json['cycle']),
+      nextDueDate: serializer.fromJson<DateTime>(json['nextDueDate']),
+      occurrences: serializer.fromJson<int>(json['occurrences']),
+      signal: serializer.fromJson<String?>(json['signal']),
+      firstSeen: serializer.fromJson<DateTime>(json['firstSeen']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'merchant': serializer.toJson<String>(merchant),
+      'amount': serializer.toJson<double>(amount),
+      'currency': serializer.toJson<String>(currency),
+      'cycle': serializer.toJson<String>(cycle),
+      'nextDueDate': serializer.toJson<DateTime>(nextDueDate),
+      'occurrences': serializer.toJson<int>(occurrences),
+      'signal': serializer.toJson<String?>(signal),
+      'firstSeen': serializer.toJson<DateTime>(firstSeen),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  ReviewCandidate copyWith({
+    String? id,
+    String? merchant,
+    double? amount,
+    String? currency,
+    String? cycle,
+    DateTime? nextDueDate,
+    int? occurrences,
+    Value<String?> signal = const Value.absent(),
+    DateTime? firstSeen,
+    DateTime? updatedAt,
+  }) => ReviewCandidate(
+    id: id ?? this.id,
+    merchant: merchant ?? this.merchant,
+    amount: amount ?? this.amount,
+    currency: currency ?? this.currency,
+    cycle: cycle ?? this.cycle,
+    nextDueDate: nextDueDate ?? this.nextDueDate,
+    occurrences: occurrences ?? this.occurrences,
+    signal: signal.present ? signal.value : this.signal,
+    firstSeen: firstSeen ?? this.firstSeen,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ReviewCandidate copyWithCompanion(ReviewCandidatesCompanion data) {
+    return ReviewCandidate(
+      id: data.id.present ? data.id.value : this.id,
+      merchant: data.merchant.present ? data.merchant.value : this.merchant,
+      amount: data.amount.present ? data.amount.value : this.amount,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      cycle: data.cycle.present ? data.cycle.value : this.cycle,
+      nextDueDate: data.nextDueDate.present
+          ? data.nextDueDate.value
+          : this.nextDueDate,
+      occurrences: data.occurrences.present
+          ? data.occurrences.value
+          : this.occurrences,
+      signal: data.signal.present ? data.signal.value : this.signal,
+      firstSeen: data.firstSeen.present ? data.firstSeen.value : this.firstSeen,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReviewCandidate(')
+          ..write('id: $id, ')
+          ..write('merchant: $merchant, ')
+          ..write('amount: $amount, ')
+          ..write('currency: $currency, ')
+          ..write('cycle: $cycle, ')
+          ..write('nextDueDate: $nextDueDate, ')
+          ..write('occurrences: $occurrences, ')
+          ..write('signal: $signal, ')
+          ..write('firstSeen: $firstSeen, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    merchant,
+    amount,
+    currency,
+    cycle,
+    nextDueDate,
+    occurrences,
+    signal,
+    firstSeen,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ReviewCandidate &&
+          other.id == this.id &&
+          other.merchant == this.merchant &&
+          other.amount == this.amount &&
+          other.currency == this.currency &&
+          other.cycle == this.cycle &&
+          other.nextDueDate == this.nextDueDate &&
+          other.occurrences == this.occurrences &&
+          other.signal == this.signal &&
+          other.firstSeen == this.firstSeen &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ReviewCandidatesCompanion extends UpdateCompanion<ReviewCandidate> {
+  final Value<String> id;
+  final Value<String> merchant;
+  final Value<double> amount;
+  final Value<String> currency;
+  final Value<String> cycle;
+  final Value<DateTime> nextDueDate;
+  final Value<int> occurrences;
+  final Value<String?> signal;
+  final Value<DateTime> firstSeen;
+  final Value<DateTime> updatedAt;
+  final Value<int> rowid;
+  const ReviewCandidatesCompanion({
+    this.id = const Value.absent(),
+    this.merchant = const Value.absent(),
+    this.amount = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.cycle = const Value.absent(),
+    this.nextDueDate = const Value.absent(),
+    this.occurrences = const Value.absent(),
+    this.signal = const Value.absent(),
+    this.firstSeen = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ReviewCandidatesCompanion.insert({
+    required String id,
+    required String merchant,
+    required double amount,
+    this.currency = const Value.absent(),
+    required String cycle,
+    required DateTime nextDueDate,
+    required int occurrences,
+    this.signal = const Value.absent(),
+    this.firstSeen = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       merchant = Value(merchant),
+       amount = Value(amount),
+       cycle = Value(cycle),
+       nextDueDate = Value(nextDueDate),
+       occurrences = Value(occurrences);
+  static Insertable<ReviewCandidate> custom({
+    Expression<String>? id,
+    Expression<String>? merchant,
+    Expression<double>? amount,
+    Expression<String>? currency,
+    Expression<String>? cycle,
+    Expression<DateTime>? nextDueDate,
+    Expression<int>? occurrences,
+    Expression<String>? signal,
+    Expression<DateTime>? firstSeen,
+    Expression<DateTime>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (merchant != null) 'merchant': merchant,
+      if (amount != null) 'amount': amount,
+      if (currency != null) 'currency': currency,
+      if (cycle != null) 'cycle': cycle,
+      if (nextDueDate != null) 'next_due_date': nextDueDate,
+      if (occurrences != null) 'occurrences': occurrences,
+      if (signal != null) 'signal': signal,
+      if (firstSeen != null) 'first_seen': firstSeen,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ReviewCandidatesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? merchant,
+    Value<double>? amount,
+    Value<String>? currency,
+    Value<String>? cycle,
+    Value<DateTime>? nextDueDate,
+    Value<int>? occurrences,
+    Value<String?>? signal,
+    Value<DateTime>? firstSeen,
+    Value<DateTime>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ReviewCandidatesCompanion(
+      id: id ?? this.id,
+      merchant: merchant ?? this.merchant,
+      amount: amount ?? this.amount,
+      currency: currency ?? this.currency,
+      cycle: cycle ?? this.cycle,
+      nextDueDate: nextDueDate ?? this.nextDueDate,
+      occurrences: occurrences ?? this.occurrences,
+      signal: signal ?? this.signal,
+      firstSeen: firstSeen ?? this.firstSeen,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (merchant.present) {
+      map['merchant'] = Variable<String>(merchant.value);
+    }
+    if (amount.present) {
+      map['amount'] = Variable<double>(amount.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (cycle.present) {
+      map['cycle'] = Variable<String>(cycle.value);
+    }
+    if (nextDueDate.present) {
+      map['next_due_date'] = Variable<DateTime>(nextDueDate.value);
+    }
+    if (occurrences.present) {
+      map['occurrences'] = Variable<int>(occurrences.value);
+    }
+    if (signal.present) {
+      map['signal'] = Variable<String>(signal.value);
+    }
+    if (firstSeen.present) {
+      map['first_seen'] = Variable<DateTime>(firstSeen.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ReviewCandidatesCompanion(')
+          ..write('id: $id, ')
+          ..write('merchant: $merchant, ')
+          ..write('amount: $amount, ')
+          ..write('currency: $currency, ')
+          ..write('cycle: $cycle, ')
+          ..write('nextDueDate: $nextDueDate, ')
+          ..write('occurrences: $occurrences, ')
+          ..write('signal: $signal, ')
+          ..write('firstSeen: $firstSeen, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ChangeEventsTable extends ChangeEvents
+    with TableInfo<$ChangeEventsTable, ChangeEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ChangeEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _subscriptionIdMeta = const VerificationMeta(
+    'subscriptionId',
+  );
+  @override
+  late final GeneratedColumn<String> subscriptionId = GeneratedColumn<String>(
+    'subscription_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _merchantMeta = const VerificationMeta(
+    'merchant',
+  );
+  @override
+  late final GeneratedColumn<String> merchant = GeneratedColumn<String>(
+    'merchant',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _typeMeta = const VerificationMeta('type');
+  @override
+  late final GeneratedColumn<String> type = GeneratedColumn<String>(
+    'type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _beforeAmountMeta = const VerificationMeta(
+    'beforeAmount',
+  );
+  @override
+  late final GeneratedColumn<double> beforeAmount = GeneratedColumn<double>(
+    'before_amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _afterAmountMeta = const VerificationMeta(
+    'afterAmount',
+  );
+  @override
+  late final GeneratedColumn<double> afterAmount = GeneratedColumn<double>(
+    'after_amount',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _currencyMeta = const VerificationMeta(
+    'currency',
+  );
+  @override
+  late final GeneratedColumn<String> currency = GeneratedColumn<String>(
+    'currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('INR'),
+  );
+  static const VerificationMeta _occurredAtMeta = const VerificationMeta(
+    'occurredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> occurredAt = GeneratedColumn<DateTime>(
+    'occurred_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    subscriptionId,
+    merchant,
+    type,
+    beforeAmount,
+    afterAmount,
+    currency,
+    occurredAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'change_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ChangeEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('subscription_id')) {
+      context.handle(
+        _subscriptionIdMeta,
+        subscriptionId.isAcceptableOrUnknown(
+          data['subscription_id']!,
+          _subscriptionIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('merchant')) {
+      context.handle(
+        _merchantMeta,
+        merchant.isAcceptableOrUnknown(data['merchant']!, _merchantMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_merchantMeta);
+    }
+    if (data.containsKey('type')) {
+      context.handle(
+        _typeMeta,
+        type.isAcceptableOrUnknown(data['type']!, _typeMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_typeMeta);
+    }
+    if (data.containsKey('before_amount')) {
+      context.handle(
+        _beforeAmountMeta,
+        beforeAmount.isAcceptableOrUnknown(
+          data['before_amount']!,
+          _beforeAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('after_amount')) {
+      context.handle(
+        _afterAmountMeta,
+        afterAmount.isAcceptableOrUnknown(
+          data['after_amount']!,
+          _afterAmountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('currency')) {
+      context.handle(
+        _currencyMeta,
+        currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
+      );
+    }
+    if (data.containsKey('occurred_at')) {
+      context.handle(
+        _occurredAtMeta,
+        occurredAt.isAcceptableOrUnknown(data['occurred_at']!, _occurredAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  ChangeEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ChangeEvent(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      subscriptionId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}subscription_id'],
+      ),
+      merchant: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}merchant'],
+      )!,
+      type: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}type'],
+      )!,
+      beforeAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}before_amount'],
+      ),
+      afterAmount: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}after_amount'],
+      ),
+      currency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency'],
+      )!,
+      occurredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}occurred_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ChangeEventsTable createAlias(String alias) {
+    return $ChangeEventsTable(attachedDatabase, alias);
+  }
+}
+
+class ChangeEvent extends DataClass implements Insertable<ChangeEvent> {
+  final String id;
+  final String? subscriptionId;
+  final String merchant;
+  final String type;
+  final double? beforeAmount;
+  final double? afterAmount;
+  final String currency;
+  final DateTime occurredAt;
+  const ChangeEvent({
+    required this.id,
+    this.subscriptionId,
+    required this.merchant,
+    required this.type,
+    this.beforeAmount,
+    this.afterAmount,
+    required this.currency,
+    required this.occurredAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || subscriptionId != null) {
+      map['subscription_id'] = Variable<String>(subscriptionId);
+    }
+    map['merchant'] = Variable<String>(merchant);
+    map['type'] = Variable<String>(type);
+    if (!nullToAbsent || beforeAmount != null) {
+      map['before_amount'] = Variable<double>(beforeAmount);
+    }
+    if (!nullToAbsent || afterAmount != null) {
+      map['after_amount'] = Variable<double>(afterAmount);
+    }
+    map['currency'] = Variable<String>(currency);
+    map['occurred_at'] = Variable<DateTime>(occurredAt);
+    return map;
+  }
+
+  ChangeEventsCompanion toCompanion(bool nullToAbsent) {
+    return ChangeEventsCompanion(
+      id: Value(id),
+      subscriptionId: subscriptionId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(subscriptionId),
+      merchant: Value(merchant),
+      type: Value(type),
+      beforeAmount: beforeAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(beforeAmount),
+      afterAmount: afterAmount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(afterAmount),
+      currency: Value(currency),
+      occurredAt: Value(occurredAt),
+    );
+  }
+
+  factory ChangeEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ChangeEvent(
+      id: serializer.fromJson<String>(json['id']),
+      subscriptionId: serializer.fromJson<String?>(json['subscriptionId']),
+      merchant: serializer.fromJson<String>(json['merchant']),
+      type: serializer.fromJson<String>(json['type']),
+      beforeAmount: serializer.fromJson<double?>(json['beforeAmount']),
+      afterAmount: serializer.fromJson<double?>(json['afterAmount']),
+      currency: serializer.fromJson<String>(json['currency']),
+      occurredAt: serializer.fromJson<DateTime>(json['occurredAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'subscriptionId': serializer.toJson<String?>(subscriptionId),
+      'merchant': serializer.toJson<String>(merchant),
+      'type': serializer.toJson<String>(type),
+      'beforeAmount': serializer.toJson<double?>(beforeAmount),
+      'afterAmount': serializer.toJson<double?>(afterAmount),
+      'currency': serializer.toJson<String>(currency),
+      'occurredAt': serializer.toJson<DateTime>(occurredAt),
+    };
+  }
+
+  ChangeEvent copyWith({
+    String? id,
+    Value<String?> subscriptionId = const Value.absent(),
+    String? merchant,
+    String? type,
+    Value<double?> beforeAmount = const Value.absent(),
+    Value<double?> afterAmount = const Value.absent(),
+    String? currency,
+    DateTime? occurredAt,
+  }) => ChangeEvent(
+    id: id ?? this.id,
+    subscriptionId: subscriptionId.present
+        ? subscriptionId.value
+        : this.subscriptionId,
+    merchant: merchant ?? this.merchant,
+    type: type ?? this.type,
+    beforeAmount: beforeAmount.present ? beforeAmount.value : this.beforeAmount,
+    afterAmount: afterAmount.present ? afterAmount.value : this.afterAmount,
+    currency: currency ?? this.currency,
+    occurredAt: occurredAt ?? this.occurredAt,
+  );
+  ChangeEvent copyWithCompanion(ChangeEventsCompanion data) {
+    return ChangeEvent(
+      id: data.id.present ? data.id.value : this.id,
+      subscriptionId: data.subscriptionId.present
+          ? data.subscriptionId.value
+          : this.subscriptionId,
+      merchant: data.merchant.present ? data.merchant.value : this.merchant,
+      type: data.type.present ? data.type.value : this.type,
+      beforeAmount: data.beforeAmount.present
+          ? data.beforeAmount.value
+          : this.beforeAmount,
+      afterAmount: data.afterAmount.present
+          ? data.afterAmount.value
+          : this.afterAmount,
+      currency: data.currency.present ? data.currency.value : this.currency,
+      occurredAt: data.occurredAt.present
+          ? data.occurredAt.value
+          : this.occurredAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChangeEvent(')
+          ..write('id: $id, ')
+          ..write('subscriptionId: $subscriptionId, ')
+          ..write('merchant: $merchant, ')
+          ..write('type: $type, ')
+          ..write('beforeAmount: $beforeAmount, ')
+          ..write('afterAmount: $afterAmount, ')
+          ..write('currency: $currency, ')
+          ..write('occurredAt: $occurredAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    subscriptionId,
+    merchant,
+    type,
+    beforeAmount,
+    afterAmount,
+    currency,
+    occurredAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ChangeEvent &&
+          other.id == this.id &&
+          other.subscriptionId == this.subscriptionId &&
+          other.merchant == this.merchant &&
+          other.type == this.type &&
+          other.beforeAmount == this.beforeAmount &&
+          other.afterAmount == this.afterAmount &&
+          other.currency == this.currency &&
+          other.occurredAt == this.occurredAt);
+}
+
+class ChangeEventsCompanion extends UpdateCompanion<ChangeEvent> {
+  final Value<String> id;
+  final Value<String?> subscriptionId;
+  final Value<String> merchant;
+  final Value<String> type;
+  final Value<double?> beforeAmount;
+  final Value<double?> afterAmount;
+  final Value<String> currency;
+  final Value<DateTime> occurredAt;
+  final Value<int> rowid;
+  const ChangeEventsCompanion({
+    this.id = const Value.absent(),
+    this.subscriptionId = const Value.absent(),
+    this.merchant = const Value.absent(),
+    this.type = const Value.absent(),
+    this.beforeAmount = const Value.absent(),
+    this.afterAmount = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ChangeEventsCompanion.insert({
+    required String id,
+    this.subscriptionId = const Value.absent(),
+    required String merchant,
+    required String type,
+    this.beforeAmount = const Value.absent(),
+    this.afterAmount = const Value.absent(),
+    this.currency = const Value.absent(),
+    this.occurredAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       merchant = Value(merchant),
+       type = Value(type);
+  static Insertable<ChangeEvent> custom({
+    Expression<String>? id,
+    Expression<String>? subscriptionId,
+    Expression<String>? merchant,
+    Expression<String>? type,
+    Expression<double>? beforeAmount,
+    Expression<double>? afterAmount,
+    Expression<String>? currency,
+    Expression<DateTime>? occurredAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (subscriptionId != null) 'subscription_id': subscriptionId,
+      if (merchant != null) 'merchant': merchant,
+      if (type != null) 'type': type,
+      if (beforeAmount != null) 'before_amount': beforeAmount,
+      if (afterAmount != null) 'after_amount': afterAmount,
+      if (currency != null) 'currency': currency,
+      if (occurredAt != null) 'occurred_at': occurredAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ChangeEventsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? subscriptionId,
+    Value<String>? merchant,
+    Value<String>? type,
+    Value<double?>? beforeAmount,
+    Value<double?>? afterAmount,
+    Value<String>? currency,
+    Value<DateTime>? occurredAt,
+    Value<int>? rowid,
+  }) {
+    return ChangeEventsCompanion(
+      id: id ?? this.id,
+      subscriptionId: subscriptionId ?? this.subscriptionId,
+      merchant: merchant ?? this.merchant,
+      type: type ?? this.type,
+      beforeAmount: beforeAmount ?? this.beforeAmount,
+      afterAmount: afterAmount ?? this.afterAmount,
+      currency: currency ?? this.currency,
+      occurredAt: occurredAt ?? this.occurredAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (subscriptionId.present) {
+      map['subscription_id'] = Variable<String>(subscriptionId.value);
+    }
+    if (merchant.present) {
+      map['merchant'] = Variable<String>(merchant.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<String>(type.value);
+    }
+    if (beforeAmount.present) {
+      map['before_amount'] = Variable<double>(beforeAmount.value);
+    }
+    if (afterAmount.present) {
+      map['after_amount'] = Variable<double>(afterAmount.value);
+    }
+    if (currency.present) {
+      map['currency'] = Variable<String>(currency.value);
+    }
+    if (occurredAt.present) {
+      map['occurred_at'] = Variable<DateTime>(occurredAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ChangeEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('subscriptionId: $subscriptionId, ')
+          ..write('merchant: $merchant, ')
+          ..write('type: $type, ')
+          ..write('beforeAmount: $beforeAmount, ')
+          ..write('afterAmount: $afterAmount, ')
+          ..write('currency: $currency, ')
+          ..write('occurredAt: $occurredAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1658,6 +2839,10 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     this,
   );
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $ReviewCandidatesTable reviewCandidates = $ReviewCandidatesTable(
+    this,
+  );
+  late final $ChangeEventsTable changeEvents = $ChangeEventsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1667,6 +2852,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     transactions,
     ignoredMerchants,
     appSettings,
+    reviewCandidates,
+    changeEvents,
   ];
 }
 
@@ -1681,6 +2868,7 @@ typedef $$SubscriptionsTableCreateCompanionBuilder =
       required DateTime nextDueDate,
       Value<bool> isPaused,
       Value<bool> isAutoDetected,
+      Value<String> category,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -1696,6 +2884,7 @@ typedef $$SubscriptionsTableUpdateCompanionBuilder =
       Value<DateTime> nextDueDate,
       Value<bool> isPaused,
       Value<bool> isAutoDetected,
+      Value<String> category,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -1752,6 +2941,11 @@ class $$SubscriptionsTableFilterComposer
 
   ColumnFilters<bool> get isAutoDetected => $composableBuilder(
     column: $table.isAutoDetected,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1820,6 +3014,11 @@ class $$SubscriptionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -1873,6 +3072,9 @@ class $$SubscriptionsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -1920,6 +3122,7 @@ class $$SubscriptionsTableTableManager
                 Value<DateTime> nextDueDate = const Value.absent(),
                 Value<bool> isPaused = const Value.absent(),
                 Value<bool> isAutoDetected = const Value.absent(),
+                Value<String> category = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -1933,6 +3136,7 @@ class $$SubscriptionsTableTableManager
                 nextDueDate: nextDueDate,
                 isPaused: isPaused,
                 isAutoDetected: isAutoDetected,
+                category: category,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -1948,6 +3152,7 @@ class $$SubscriptionsTableTableManager
                 required DateTime nextDueDate,
                 Value<bool> isPaused = const Value.absent(),
                 Value<bool> isAutoDetected = const Value.absent(),
+                Value<String> category = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -1961,6 +3166,7 @@ class $$SubscriptionsTableTableManager
                 nextDueDate: nextDueDate,
                 isPaused: isPaused,
                 isAutoDetected: isAutoDetected,
+                category: category,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -2591,6 +3797,594 @@ typedef $$AppSettingsTableProcessedTableManager =
       AppSetting,
       PrefetchHooks Function()
     >;
+typedef $$ReviewCandidatesTableCreateCompanionBuilder =
+    ReviewCandidatesCompanion Function({
+      required String id,
+      required String merchant,
+      required double amount,
+      Value<String> currency,
+      required String cycle,
+      required DateTime nextDueDate,
+      required int occurrences,
+      Value<String?> signal,
+      Value<DateTime> firstSeen,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ReviewCandidatesTableUpdateCompanionBuilder =
+    ReviewCandidatesCompanion Function({
+      Value<String> id,
+      Value<String> merchant,
+      Value<double> amount,
+      Value<String> currency,
+      Value<String> cycle,
+      Value<DateTime> nextDueDate,
+      Value<int> occurrences,
+      Value<String?> signal,
+      Value<DateTime> firstSeen,
+      Value<DateTime> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ReviewCandidatesTableFilterComposer
+    extends Composer<_$AppDatabase, $ReviewCandidatesTable> {
+  $$ReviewCandidatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get cycle => $composableBuilder(
+    column: $table.cycle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get nextDueDate => $composableBuilder(
+    column: $table.nextDueDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get occurrences => $composableBuilder(
+    column: $table.occurrences,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get signal => $composableBuilder(
+    column: $table.signal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get firstSeen => $composableBuilder(
+    column: $table.firstSeen,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ReviewCandidatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ReviewCandidatesTable> {
+  $$ReviewCandidatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get amount => $composableBuilder(
+    column: $table.amount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get cycle => $composableBuilder(
+    column: $table.cycle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get nextDueDate => $composableBuilder(
+    column: $table.nextDueDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get occurrences => $composableBuilder(
+    column: $table.occurrences,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get signal => $composableBuilder(
+    column: $table.signal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get firstSeen => $composableBuilder(
+    column: $table.firstSeen,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ReviewCandidatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ReviewCandidatesTable> {
+  $$ReviewCandidatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get merchant =>
+      $composableBuilder(column: $table.merchant, builder: (column) => column);
+
+  GeneratedColumn<double> get amount =>
+      $composableBuilder(column: $table.amount, builder: (column) => column);
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<String> get cycle =>
+      $composableBuilder(column: $table.cycle, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get nextDueDate => $composableBuilder(
+    column: $table.nextDueDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get occurrences => $composableBuilder(
+    column: $table.occurrences,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get signal =>
+      $composableBuilder(column: $table.signal, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get firstSeen =>
+      $composableBuilder(column: $table.firstSeen, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ReviewCandidatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ReviewCandidatesTable,
+          ReviewCandidate,
+          $$ReviewCandidatesTableFilterComposer,
+          $$ReviewCandidatesTableOrderingComposer,
+          $$ReviewCandidatesTableAnnotationComposer,
+          $$ReviewCandidatesTableCreateCompanionBuilder,
+          $$ReviewCandidatesTableUpdateCompanionBuilder,
+          (
+            ReviewCandidate,
+            BaseReferences<
+              _$AppDatabase,
+              $ReviewCandidatesTable,
+              ReviewCandidate
+            >,
+          ),
+          ReviewCandidate,
+          PrefetchHooks Function()
+        > {
+  $$ReviewCandidatesTableTableManager(
+    _$AppDatabase db,
+    $ReviewCandidatesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ReviewCandidatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ReviewCandidatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ReviewCandidatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> merchant = const Value.absent(),
+                Value<double> amount = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<String> cycle = const Value.absent(),
+                Value<DateTime> nextDueDate = const Value.absent(),
+                Value<int> occurrences = const Value.absent(),
+                Value<String?> signal = const Value.absent(),
+                Value<DateTime> firstSeen = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReviewCandidatesCompanion(
+                id: id,
+                merchant: merchant,
+                amount: amount,
+                currency: currency,
+                cycle: cycle,
+                nextDueDate: nextDueDate,
+                occurrences: occurrences,
+                signal: signal,
+                firstSeen: firstSeen,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String merchant,
+                required double amount,
+                Value<String> currency = const Value.absent(),
+                required String cycle,
+                required DateTime nextDueDate,
+                required int occurrences,
+                Value<String?> signal = const Value.absent(),
+                Value<DateTime> firstSeen = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ReviewCandidatesCompanion.insert(
+                id: id,
+                merchant: merchant,
+                amount: amount,
+                currency: currency,
+                cycle: cycle,
+                nextDueDate: nextDueDate,
+                occurrences: occurrences,
+                signal: signal,
+                firstSeen: firstSeen,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ReviewCandidatesTable, ReviewCandidate>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ReviewCandidatesTable,
+                    ReviewCandidate
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ReviewCandidatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ReviewCandidatesTable,
+      ReviewCandidate,
+      $$ReviewCandidatesTableFilterComposer,
+      $$ReviewCandidatesTableOrderingComposer,
+      $$ReviewCandidatesTableAnnotationComposer,
+      $$ReviewCandidatesTableCreateCompanionBuilder,
+      $$ReviewCandidatesTableUpdateCompanionBuilder,
+      (
+        ReviewCandidate,
+        BaseReferences<_$AppDatabase, $ReviewCandidatesTable, ReviewCandidate>,
+      ),
+      ReviewCandidate,
+      PrefetchHooks Function()
+    >;
+typedef $$ChangeEventsTableCreateCompanionBuilder =
+    ChangeEventsCompanion Function({
+      required String id,
+      Value<String?> subscriptionId,
+      required String merchant,
+      required String type,
+      Value<double?> beforeAmount,
+      Value<double?> afterAmount,
+      Value<String> currency,
+      Value<DateTime> occurredAt,
+      Value<int> rowid,
+    });
+typedef $$ChangeEventsTableUpdateCompanionBuilder =
+    ChangeEventsCompanion Function({
+      Value<String> id,
+      Value<String?> subscriptionId,
+      Value<String> merchant,
+      Value<String> type,
+      Value<double?> beforeAmount,
+      Value<double?> afterAmount,
+      Value<String> currency,
+      Value<DateTime> occurredAt,
+      Value<int> rowid,
+    });
+
+class $$ChangeEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $ChangeEventsTable> {
+  $$ChangeEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subscriptionId => $composableBuilder(
+    column: $table.subscriptionId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get beforeAmount => $composableBuilder(
+    column: $table.beforeAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get afterAmount => $composableBuilder(
+    column: $table.afterAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ChangeEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $ChangeEventsTable> {
+  $$ChangeEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get subscriptionId => $composableBuilder(
+    column: $table.subscriptionId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get merchant => $composableBuilder(
+    column: $table.merchant,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get beforeAmount => $composableBuilder(
+    column: $table.beforeAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get afterAmount => $composableBuilder(
+    column: $table.afterAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get currency => $composableBuilder(
+    column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ChangeEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ChangeEventsTable> {
+  $$ChangeEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get subscriptionId => $composableBuilder(
+    column: $table.subscriptionId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get merchant =>
+      $composableBuilder(column: $table.merchant, builder: (column) => column);
+
+  GeneratedColumn<String> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+
+  GeneratedColumn<double> get beforeAmount => $composableBuilder(
+    column: $table.beforeAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get afterAmount => $composableBuilder(
+    column: $table.afterAmount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currency =>
+      $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get occurredAt => $composableBuilder(
+    column: $table.occurredAt,
+    builder: (column) => column,
+  );
+}
+
+class $$ChangeEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ChangeEventsTable,
+          ChangeEvent,
+          $$ChangeEventsTableFilterComposer,
+          $$ChangeEventsTableOrderingComposer,
+          $$ChangeEventsTableAnnotationComposer,
+          $$ChangeEventsTableCreateCompanionBuilder,
+          $$ChangeEventsTableUpdateCompanionBuilder,
+          (
+            ChangeEvent,
+            BaseReferences<_$AppDatabase, $ChangeEventsTable, ChangeEvent>,
+          ),
+          ChangeEvent,
+          PrefetchHooks Function()
+        > {
+  $$ChangeEventsTableTableManager(_$AppDatabase db, $ChangeEventsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ChangeEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ChangeEventsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ChangeEventsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> subscriptionId = const Value.absent(),
+                Value<String> merchant = const Value.absent(),
+                Value<String> type = const Value.absent(),
+                Value<double?> beforeAmount = const Value.absent(),
+                Value<double?> afterAmount = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<DateTime> occurredAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChangeEventsCompanion(
+                id: id,
+                subscriptionId: subscriptionId,
+                merchant: merchant,
+                type: type,
+                beforeAmount: beforeAmount,
+                afterAmount: afterAmount,
+                currency: currency,
+                occurredAt: occurredAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> subscriptionId = const Value.absent(),
+                required String merchant,
+                required String type,
+                Value<double?> beforeAmount = const Value.absent(),
+                Value<double?> afterAmount = const Value.absent(),
+                Value<String> currency = const Value.absent(),
+                Value<DateTime> occurredAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ChangeEventsCompanion.insert(
+                id: id,
+                subscriptionId: subscriptionId,
+                merchant: merchant,
+                type: type,
+                beforeAmount: beforeAmount,
+                afterAmount: afterAmount,
+                currency: currency,
+                occurredAt: occurredAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ChangeEventsTable, ChangeEvent>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ChangeEventsTable,
+                    ChangeEvent
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ChangeEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ChangeEventsTable,
+      ChangeEvent,
+      $$ChangeEventsTableFilterComposer,
+      $$ChangeEventsTableOrderingComposer,
+      $$ChangeEventsTableAnnotationComposer,
+      $$ChangeEventsTableCreateCompanionBuilder,
+      $$ChangeEventsTableUpdateCompanionBuilder,
+      (
+        ChangeEvent,
+        BaseReferences<_$AppDatabase, $ChangeEventsTable, ChangeEvent>,
+      ),
+      ChangeEvent,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2603,4 +4397,8 @@ class $AppDatabaseManager {
       $$IgnoredMerchantsTableTableManager(_db, _db.ignoredMerchants);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$ReviewCandidatesTableTableManager get reviewCandidates =>
+      $$ReviewCandidatesTableTableManager(_db, _db.reviewCandidates);
+  $$ChangeEventsTableTableManager get changeEvents =>
+      $$ChangeEventsTableTableManager(_db, _db.changeEvents);
 }

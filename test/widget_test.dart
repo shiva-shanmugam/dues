@@ -1,6 +1,7 @@
 import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/data/services/sms_inbox_service.dart';
 import 'package:dues/domain/models/subscription.dart';
+import 'package:dues/domain/models/review_candidate.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/theme_mode_provider.dart';
@@ -22,6 +23,8 @@ void main() {
     overrides: [
       subscriptionsProvider.overrideWith((ref) => Stream.value([subscription])),
       transactionsProvider.overrideWith((ref) async => const []),
+      reviewCandidatesProvider.overrideWith((ref) => Stream.value(const [])),
+      changeEventsProvider.overrideWith((ref) => Stream.value(const [])),
       smsInboxProvider.overrideWithValue(const _FakeSmsInboxService()),
       appPreferencesProvider.overrideWith(_Preferences.new),
       themeModeProvider.overrideWith(_ThemePreference.new),
@@ -71,20 +74,65 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('home scroll reaches local insights', (tester) async {
+  testWidgets('home scroll reaches monthly change receipt', (tester) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
 
     await tester.scrollUntilVisible(
-      find.text('LOCAL INSIGHTS'),
+      find.text('WHAT CHANGED?'),
       500,
       scrollable: find.byType(Scrollable).first,
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('LOCAL INSIGHTS'), findsOneWidget);
-    expect(find.text('FIXED / MO'), findsOneWidget);
+    expect(find.text('WHAT CHANGED?'), findsOneWidget);
+    expect(find.text('NO RECORDED CHANGES THIS MONTH.'), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('review inbox opens a classification receipt', (tester) async {
+    final candidate = ReviewCandidate(
+      id: 'review:rent:monthly',
+      merchant: 'Landlord',
+      amount: 18000,
+      currency: 'INR',
+      cycle: BillingCycle.monthly,
+      nextDueDate: DateTime.now().add(const Duration(days: 12)),
+      occurrences: 3,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          subscriptionsProvider.overrideWith(
+            (ref) => Stream.value([subscription]),
+          ),
+          reviewCandidatesProvider.overrideWith(
+            (ref) => Stream.value([candidate]),
+          ),
+          changeEventsProvider.overrideWith((ref) => Stream.value(const [])),
+          smsInboxProvider.overrideWithValue(const _FakeSmsInboxService()),
+          appPreferencesProvider.overrideWith(_Preferences.new),
+          themeModeProvider.overrideWith(_ThemePreference.new),
+          ignoredMerchantsProvider.overrideWith(
+            (ref) => Stream.value(<String>{}),
+          ),
+        ],
+        child: MaterialApp(theme: DuesTheme.dark, home: const AppShell()),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('REVIEW INBOX'),
+      400,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('LANDLORD'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('REPEATING PAYMENT?'), findsOneWidget);
+    expect(find.text('PERSON / BUSINESS'), findsOneWidget);
+    expect(find.text('TRACK THIS'), findsOneWidget);
+    expect(find.text('NOT RECURRING'), findsOneWidget);
   });
 
   testWidgets('bottom navigation opens subscriptions and settings', (
@@ -113,6 +161,10 @@ void main() {
             (ref) => Stream.value(const <Subscription>[]),
           ),
           transactionsProvider.overrideWith((ref) async => const []),
+          reviewCandidatesProvider.overrideWith(
+            (ref) => Stream.value(const []),
+          ),
+          changeEventsProvider.overrideWith((ref) => Stream.value(const [])),
           smsInboxProvider.overrideWithValue(const _FakeSmsInboxService()),
           appPreferencesProvider.overrideWith(_Preferences.new),
           themeModeProvider.overrideWith(_ThemePreference.new),
