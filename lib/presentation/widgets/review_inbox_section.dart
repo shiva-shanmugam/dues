@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/domain/models/review_candidate.dart';
 import 'package:dues/domain/models/subscription.dart';
+import 'package:dues/domain/services/currency_converter.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/reminder_sync_provider.dart';
@@ -11,7 +12,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ReviewInboxSection extends ConsumerWidget {
-  const ReviewInboxSection({super.key});
+  const ReviewInboxSection({required this.displayCurrency, super.key});
+
+  final String displayCurrency;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,14 +71,16 @@ class ReviewInboxSection extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _ReviewSheet(candidate: candidate),
+      builder: (_) =>
+          _ReviewSheet(candidate: candidate, displayCurrency: displayCurrency),
     );
   }
 }
 
 class _ReviewSheet extends ConsumerStatefulWidget {
-  const _ReviewSheet({required this.candidate});
+  const _ReviewSheet({required this.candidate, required this.displayCurrency});
   final ReviewCandidate candidate;
+  final String displayCurrency;
 
   @override
   ConsumerState<_ReviewSheet> createState() => _ReviewSheetState();
@@ -109,8 +114,12 @@ class _ReviewSheetState extends ConsumerState<_ReviewSheet> {
               LeaderLine(
                 label: candidate.merchant.toUpperCase(),
                 amount: formatReceiptAmount(
-                  candidate.amount,
-                  currency: candidate.currency,
+                  CurrencyConverter.convert(
+                    candidate.amount,
+                    from: candidate.currency,
+                    to: widget.displayCurrency,
+                  ),
+                  currency: widget.displayCurrency,
                 ),
               ),
               LeaderLine(label: 'PATTERN', amount: candidate.cycle.label),

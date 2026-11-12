@@ -2,6 +2,7 @@ import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/core/utils/formatters.dart';
 import 'package:dues/domain/models/subscription.dart';
 import 'package:dues/domain/services/commitment_schedule.dart';
+import 'package:dues/domain/services/currency_converter.dart';
 import 'package:dues/presentation/widgets/receipt_widgets.dart';
 import 'package:flutter/material.dart';
 
@@ -10,6 +11,7 @@ class CommitmentCalendar extends StatefulWidget {
     required this.subscriptions,
     required this.now,
     required this.onInteraction,
+    this.displayCurrency,
     this.onClose,
     super.key,
   });
@@ -17,6 +19,7 @@ class CommitmentCalendar extends StatefulWidget {
   final List<Subscription> subscriptions;
   final DateTime now;
   final VoidCallback onInteraction;
+  final String? displayCurrency;
   final VoidCallback? onClose;
 
   @override
@@ -208,6 +211,7 @@ class _CommitmentCalendarState extends State<CommitmentCalendar> {
             date: date,
             occurrences: due,
             now: widget.now,
+            displayCurrency: widget.displayCurrency,
           ),
         ),
       ],
@@ -362,11 +366,13 @@ class _CommitmentBubble extends StatelessWidget {
     required this.date,
     required this.occurrences,
     required this.now,
+    required this.displayCurrency,
   });
 
   final DateTime date;
   final List<CommitmentOccurrence> occurrences;
   final DateTime now;
+  final String? displayCurrency;
 
   @override
   Widget build(BuildContext context) {
@@ -377,10 +383,16 @@ class _CommitmentBubble extends StatelessWidget {
         : 'UPCOMING';
     final totals = <String, double>{};
     for (final occurrence in occurrences) {
+      final currency = displayCurrency ?? occurrence.subscription.currency;
+      final amount = CurrencyConverter.convert(
+        occurrence.subscription.amount,
+        from: occurrence.subscription.currency,
+        to: currency,
+      );
       totals.update(
-        occurrence.subscription.currency,
-        (value) => value + occurrence.subscription.amount,
-        ifAbsent: () => occurrence.subscription.amount,
+        currency,
+        (value) => value + amount,
+        ifAbsent: () => amount,
       );
     }
 
@@ -415,8 +427,12 @@ class _CommitmentBubble extends StatelessWidget {
             _BubbleLine(
               label: occurrence.subscription.name.toUpperCase(),
               amount: formatReceiptAmount(
-                occurrence.subscription.amount,
-                currency: occurrence.subscription.currency,
+                CurrencyConverter.convert(
+                  occurrence.subscription.amount,
+                  from: occurrence.subscription.currency,
+                  to: displayCurrency ?? occurrence.subscription.currency,
+                ),
+                currency: displayCurrency ?? occurrence.subscription.currency,
               ),
             ),
             Text(

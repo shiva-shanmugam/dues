@@ -70,18 +70,6 @@ class _SubscriptionEditorSheetState
     currency = existing?.currency ?? 'INR';
     nextDueDate =
         existing?.nextDueDate ?? DateTime.now().add(const Duration(days: 30));
-    if (existing == null) _loadDefaultCurrency();
-  }
-
-  Future<void> _loadDefaultCurrency() async {
-    try {
-      final preferences = await ref.read(appPreferencesProvider.future);
-      if (mounted && !currencyChosen) {
-        setState(() => currency = preferences.currency);
-      }
-    } catch (_) {
-      // INR remains usable if local preferences cannot be loaded.
-    }
   }
 
   @override

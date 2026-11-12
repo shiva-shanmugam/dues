@@ -92,7 +92,7 @@ void main() {
     await tester.ensureVisible(find.text('CURRENCY'));
     await tester.tap(find.text('CURRENCY'));
     await tester.pumpAndSettle();
-    expect(find.text('DEFAULT CURRENCY'), findsOneWidget);
+    expect(find.text('HOME DISPLAY CURRENCY'), findsOneWidget);
     await tester.tap(find.text('US DOLLAR'));
     await tester.pumpAndSettle();
     expect(container.read(appPreferencesProvider).value!.currency, 'USD');

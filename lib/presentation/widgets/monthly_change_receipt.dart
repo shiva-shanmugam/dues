@@ -1,6 +1,7 @@
 import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/domain/models/change_event.dart';
 import 'package:dues/domain/models/subscription.dart';
+import 'package:dues/domain/services/currency_converter.dart';
 import 'package:dues/presentation/widgets/receipt_widgets.dart';
 import 'package:flutter/material.dart';
 
@@ -39,17 +40,11 @@ class MonthlyChangeReceipt extends StatelessWidget {
         .where(
           (event) =>
               event.occurredAt.year == now.year &&
-              event.occurredAt.month == now.month &&
-              event.currency == currency,
+              event.occurredAt.month == now.month,
         )
         .toList();
     final missed = subscriptions
-        .where(
-          (item) =>
-              !item.isPaused &&
-              item.currency == currency &&
-              item.daysRemainingFrom(now) < 0,
-        )
+        .where((item) => !item.isPaused && item.daysRemainingFrom(now) < 0)
         .toList();
     final visible = monthEvents
         .where(
@@ -62,16 +57,21 @@ class MonthlyChangeReceipt extends StatelessWidget {
         )
         .toList();
     final net = visible.fold<double>(0, (sum, event) {
+      final original = switch (event.type) {
+        ChangeEventType.added => event.afterAmount ?? 0.0,
+        ChangeEventType.deleted => -(event.beforeAmount ?? 0.0),
+        ChangeEventType.priceChanged =>
+          (event.afterAmount ?? 0.0) - (event.beforeAmount ?? 0.0),
+        ChangeEventType.paused => -(event.beforeAmount ?? 0.0),
+        ChangeEventType.resumed => event.afterAmount ?? 0.0,
+        _ => 0.0,
+      };
       return sum +
-          switch (event.type) {
-            ChangeEventType.added => event.afterAmount ?? 0.0,
-            ChangeEventType.deleted => -(event.beforeAmount ?? 0.0),
-            ChangeEventType.priceChanged =>
-              (event.afterAmount ?? 0.0) - (event.beforeAmount ?? 0.0),
-            ChangeEventType.paused => -(event.beforeAmount ?? 0.0),
-            ChangeEventType.resumed => event.afterAmount ?? 0.0,
-            _ => 0.0,
-          };
+          CurrencyConverter.convert(
+            original,
+            from: event.currency,
+            to: currency,
+          );
     });
 
     return Column(
@@ -107,7 +107,7 @@ class MonthlyChangeReceipt extends StatelessWidget {
             LeaderLine(
               label:
                   '${_eventLabel(event.type)} · ${event.merchant.toUpperCase()}',
-              amount: _eventAmount(event),
+              amount: _eventAmount(event, currency),
             ),
           for (final item in missed.take(3))
             LeaderLine(
@@ -143,7 +143,7 @@ class MonthlyChangeReceipt extends StatelessWidget {
     _ => type.name.toUpperCase(),
   };
 
-  String _eventAmount(ChangeEvent event) {
+  String _eventAmount(ChangeEvent event, String displayCurrency) {
     final difference = switch (event.type) {
       ChangeEventType.added => event.afterAmount ?? 0.0,
       ChangeEventType.deleted => -(event.beforeAmount ?? 0.0),
@@ -153,6 +153,11 @@ class MonthlyChangeReceipt extends StatelessWidget {
       ChangeEventType.resumed => event.afterAmount ?? 0.0,
       _ => 0.0,
     };
-    return '${difference >= 0 ? '+' : '-'}${formatReceiptAmount(difference.abs(), currency: event.currency)}';
+    final converted = CurrencyConverter.convert(
+      difference,
+      from: event.currency,
+      to: displayCurrency,
+    );
+    return '${converted >= 0 ? '+' : '-'}${formatReceiptAmount(converted.abs(), currency: displayCurrency)}';
   }
 }

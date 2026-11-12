@@ -237,10 +237,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SectionHeader('DEFAULT CURRENCY'),
+              const SectionHeader('HOME DISPLAY CURRENCY'),
               const SizedBox(height: 12),
               Text(
-                'USED FOR NEW MANUAL ENTRIES AND STATEMENT TOTALS. EXISTING CHARGES KEEP THEIR ORIGINAL CURRENCY.',
+                'THIS CHANGES HOME ONLY, USING BUNDLED OFFLINE REFERENCE RATES. SAVED CHARGES, MANUAL ENTRIES AND EDIT SCREENS KEEP THEIR OWN CURRENCY.',
                 style: TextStyle(
                   color: context.receipt.muted,
                   fontSize: 10,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dues/core/theme/app_theme.dart';
 import 'package:dues/domain/models/subscription.dart';
+import 'package:dues/domain/services/currency_converter.dart';
 import 'package:dues/presentation/providers/app_providers.dart';
 import 'package:dues/presentation/providers/preferences_provider.dart';
 import 'package:dues/presentation/providers/reminder_sync_provider.dart';
@@ -40,12 +41,15 @@ class HomePage extends ConsumerWidget {
     final active = subscriptions.where((item) => !item.isPaused).toList()
       ..sort((a, b) => a.nextDueDate.compareTo(b.nextDueDate));
     final currency = ref.watch(appPreferencesProvider).value?.currency ?? 'INR';
-    final inCurrency = active
-        .where((item) => item.currency == currency)
-        .toList();
-    final monthly = inCurrency.fold<double>(
+    final monthly = active.fold<double>(
       0,
-      (sum, item) => sum + item.monthlyEquivalent,
+      (sum, item) =>
+          sum +
+          CurrencyConverter.convert(
+            item.monthlyEquivalent,
+            from: item.currency,
+            to: currency,
+          ),
     );
 
     return CustomScrollView(
@@ -75,32 +79,38 @@ class HomePage extends ConsumerWidget {
                   LeaderLine(
                     label: item.name.toUpperCase(),
                     amount: formatReceiptAmount(
-                      item.amount,
-                      currency: item.currency,
+                      CurrencyConverter.convert(
+                        item.amount,
+                        from: item.currency,
+                        to: currency,
+                      ),
+                      currency: currency,
                     ),
                   ),
                 const SizedBox(height: 8),
                 const DashedDivider(),
                 const SizedBox(height: 28),
                 _Totals(monthly: monthly, currency: currency),
-                if (inCurrency.length != active.length) ...[
-                  const SizedBox(height: 10),
-                  Text(
-                    'TOTALS USE $currency. OTHER CURRENCIES ARE LISTED WITHOUT CONVERSION.',
-                    style: TextStyle(
-                      color: context.receipt.muted,
-                      fontSize: 10,
-                      height: 1.5,
-                      letterSpacing: .5,
-                    ),
+                const SizedBox(height: 10),
+                Text(
+                  'HOME DISPLAY / $currency · OFFLINE REFERENCE CONVERSION',
+                  style: TextStyle(
+                    color: context.receipt.muted,
+                    fontSize: 10,
+                    height: 1.5,
+                    letterSpacing: .5,
                   ),
-                ],
+                ),
                 const SizedBox(height: 32),
-                _NextDueStamp(subscription: active.first, now: now),
+                _NextDueStamp(
+                  subscription: active.first,
+                  now: now,
+                  displayCurrency: currency,
+                ),
               ],
               if (!subscriptionsAsync.isLoading) ...[
                 const SizedBox(height: 44),
-                const ReviewInboxSection(),
+                ReviewInboxSection(displayCurrency: currency),
                 const SizedBox(height: 40),
                 MonthlyChangeReceipt(
                   events: changeEvents,
@@ -142,6 +152,8 @@ class HomePage extends ConsumerWidget {
             child: CommitmentCalendar(
               subscriptions: subscriptions,
               now: now,
+              displayCurrency:
+                  ref.read(appPreferencesProvider).value?.currency ?? 'INR',
               onInteraction: () => ref.read(hapticsProvider).selectionClick(),
               onClose: () => Navigator.of(dialogContext).pop(),
             ),
@@ -324,10 +336,15 @@ class _Totals extends StatelessWidget {
 }
 
 class _NextDueStamp extends StatelessWidget {
-  const _NextDueStamp({required this.subscription, required this.now});
+  const _NextDueStamp({
+    required this.subscription,
+    required this.now,
+    required this.displayCurrency,
+  });
 
   final Subscription subscription;
   final DateTime now;
+  final String displayCurrency;
 
   @override
   Widget build(BuildContext context) {
@@ -340,7 +357,10 @@ class _NextDueStamp extends StatelessWidget {
     return Stamp(
       child: Text(
         'NEXT DUE: ${subscription.name.toUpperCase()} / $timing · '
-        '${formatReceiptAmount(subscription.amount, currency: subscription.currency)}',
+        '${formatReceiptAmount(
+          CurrencyConverter.convert(subscription.amount, from: subscription.currency, to: displayCurrency),
+          currency: displayCurrency,
+        )}',
         maxLines: 3,
         overflow: TextOverflow.ellipsis,
       ),

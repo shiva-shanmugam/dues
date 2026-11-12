@@ -90,6 +90,35 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('home converts saved amounts into its display currency', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          subscriptionsProvider.overrideWith(
+            (ref) => Stream.value([subscription]),
+          ),
+          reviewCandidatesProvider.overrideWith(
+            (ref) => Stream.value(const []),
+          ),
+          changeEventsProvider.overrideWith((ref) => Stream.value(const [])),
+          appPreferencesProvider.overrideWith(_UsdPreferences.new),
+          themeModeProvider.overrideWith(_ThemePreference.new),
+          ignoredMerchantsProvider.overrideWith(
+            (ref) => Stream.value(<String>{}),
+          ),
+        ],
+        child: MaterialApp(theme: DuesTheme.dark, home: const AppShell()),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text(r'$7.77'), findsWidgets);
+    expect(find.textContaining('HOME DISPLAY / USD'), findsOneWidget);
+    expect(find.text('₹649'), findsNothing);
+  });
+
   testWidgets('review inbox opens a classification receipt', (tester) async {
     final candidate = ReviewCandidate(
       id: 'review:rent:monthly',
@@ -225,6 +254,12 @@ class _Preferences extends AppPreferencesController {
   @override
   Future<AppPreferences> build() async =>
       const AppPreferences(hapticsEnabled: false);
+}
+
+class _UsdPreferences extends AppPreferencesController {
+  @override
+  Future<AppPreferences> build() async =>
+      const AppPreferences(currency: 'USD', hapticsEnabled: false);
 }
 
 class _ThemePreference extends ThemeModeController {
